@@ -17,7 +17,7 @@ import (
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 var (
-	version string = "v0.1.0"
+	version string = "v0.1.1"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/stevencyb/gopackager",
+		Address: "registry.terraform.io/StevenCyb/gopackager",
 		Debug:   debug,
 	}
 

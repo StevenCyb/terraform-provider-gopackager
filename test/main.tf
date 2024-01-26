@@ -1,7 +1,9 @@
+# TEST: rm -Rf .ter*; rm compiled_example*; terraform init
+
 terraform {
   required_providers {
     gopackager = {
-      version = "0.1.0"
+      version = "0.1.1"
       source  = "github.com/stevencyb/gopackager"
     }
   }

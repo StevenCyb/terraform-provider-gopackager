@@ -3,9 +3,16 @@ package compiler
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
+
+// ErrUnableToGetWorkingDirectory is an error returned when the current working directory cannot be retrieved.
+var ErrUnableToGetWorkingDirectory = errors.New("unable to get current working directory")
 
 // CompilerI is an interface for the Compiler type.
 type CompilerI interface {
@@ -29,13 +36,29 @@ func (c *Compiler) Compile(conf Config) (binaryLocation string, hash string, err
 		return binaryLocation, hash, err
 	}
 
-	binaryLocation = conf.GetDestination()
+	var cmd *exec.Cmd
 
-	cmd := exec.Command("go", "build", "-o", binaryLocation, conf.source)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return "", "", ErrUnableToGetWorkingDirectory
+	}
+
+	binaryLocation = filepath.Join(workingDir, conf.GetDestination())
+	workingDir = filepath.Dir(conf.source)
+
+	if strings.HasSuffix(conf.source, ".go") {
+		cmd = exec.Command("go", "build", "-mod=mod", "-o", binaryLocation, conf.source)
+	} else {
+		cmd = exec.Command("go", "build", "-mod=mod", "-o", binaryLocation)
+	}
+
+	cmd.Dir = workingDir
 	cmd.Env = append(os.Environ(), "GOOS="+conf.goos, "GOARCH="+conf.goarch)
 
-	if err := cmd.Run(); err != nil {
-		return binaryLocation, hash, err
+	if combinedOutput, err := cmd.CombinedOutput(); err != nil {
+		return binaryLocation, hash, fmt.Errorf(
+			"unable to compile binary: %w, \n\tcommand: %s, \n\toutput: %s",
+			err, cmd.String(), string(combinedOutput))
 	}
 
 	hashSHA256 := sha256.New()
