@@ -122,27 +122,4 @@ func TestConfigVerify(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Equal(t, ErrGOARCHNoSet, err)
 	})
-
-	t.Run("SourceNotExists", func(t *testing.T) {
-		t.Parallel()
-
-		c := NewConfig()
-		assert.NotNil(t, c)
-
-		c = c.Source("not_exists")
-		assert.NotNil(t, c)
-
-		c = c.Destination("binary")
-		assert.NotNil(t, c)
-
-		c = c.GOOS("linux")
-		assert.NotNil(t, c)
-
-		c = c.GOARCH("amd64")
-		assert.NotNil(t, c)
-
-		err := c.Verify()
-		assert.NotNil(t, err)
-		assert.ErrorIs(t, err, ErrSourceFileNotExists)
-	})
 }

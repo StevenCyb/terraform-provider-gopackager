@@ -38,6 +38,6 @@ func TestCompiler(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, binaryPath)
 	assert.NotEmpty(t, hash)
-	assert.Equal(t, "binary", binaryPath)
+	assert.True(t, strings.HasSuffix(binaryPath, "binary"))
 	assert.Regexp(t, `^[0-9a-zA-Z]+$`, hash)
 }

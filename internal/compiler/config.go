@@ -2,8 +2,6 @@ package compiler
 
 import (
 	"errors"
-	"fmt"
-	"os"
 	"strings"
 )
 
@@ -16,8 +14,6 @@ var (
 	ErrGOOSNoSet = errors.New("GOOS not set")
 	// Error when the GOARCH is not set.
 	ErrGOARCHNoSet = errors.New("GOARCH not set")
-	// Error when the source file does not exist.
-	ErrSourceFileNotExists = errors.New("source file does not exist")
 )
 
 // Configuration for the compiler.
@@ -72,10 +68,6 @@ func (c *Config) Verify() error {
 		return ErrGOOSNoSet
 	case c.goarch == "":
 		return ErrGOARCHNoSet
-	}
-
-	if state, err := os.Stat(c.source); os.IsNotExist(err) || state.IsDir() {
-		return fmt.Errorf("%w: %s", ErrSourceFileNotExists, c.source)
 	}
 
 	return nil
