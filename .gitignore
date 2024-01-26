@@ -26,6 +26,8 @@ website/node_modules
 *.test
 *.iml
 
+.ignore
+
 # Ignore test files
 test/compiled_example
 test/.terraform.lock.hcl

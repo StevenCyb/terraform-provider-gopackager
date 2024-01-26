@@ -181,8 +181,8 @@ func (c *CompileDataSource) ValidateConfig(ctx context.Context, req datasource.V
 
 	if data.Source.IsNull() || data.Source.IsUnknown() {
 		resp.Diagnostics.AddError(
-			"Missing main file attribute.",
-			"Expected main file to point to a GoLang main file.",
+			"Missing source attribute.",
+			"Expected source path to point to a GoLang main file.",
 		)
 
 		return
