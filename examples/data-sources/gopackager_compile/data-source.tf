@@ -20,3 +20,15 @@ output "binary_location" {
 output "binary_hash" {
   value = data.gopackager_compile.example.binary_hash
 }
+
+# Example on how to use it with AWS lambda.
+resource "aws_lambda_function" "example" {
+  function_name    = "example"
+  runtime          = "go1.x"
+  handler          = "service"
+  role             = aws_iam_role.lambda_role.arn
+  timeout          = 15
+  filename         = data.gopackager_compile.example.binary_location
+  source_code_hash = data.gopackager_compile.example.binary_hash
+  memory_size      = 128
+}
