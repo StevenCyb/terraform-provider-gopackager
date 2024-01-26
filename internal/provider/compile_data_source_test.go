@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -9,7 +10,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
-	"github.com/stevencyb/terraform-provider-gopackager/internal/compiler"
+	"github.com/stevencyb/gopackager/internal/compiler"
+	"github.com/stevencyb/gopackager/internal/packager"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAccDataSourceFrameworkSatisfaction(t *testing.T) {
@@ -22,10 +25,20 @@ func TestAccCompileDataSource(t *testing.T) {
 	t.Parallel()
 
 	mockCompiler := compiler.MockCompiler{}
+	mockPackager := packager.MockZIP{}
 	globalCompiler = &mockCompiler
+	globalZIPPackager = &mockPackager
 	testAccProtoV6ProviderFactories := map[string]func() (tfprotov6.ProviderServer, error){
 		"gopackager": providerserver.NewProtocol6WithError(New("test")()),
 	}
+
+	additionalZIPResources := map[string]string{
+		"../../LICENSE": "LICENSE",
+		"../provider":   "a/provider",
+	}
+	additionalZIPResourcesGen, diag := types.MapValueFrom(context.Background(), types.StringType, additionalZIPResources)
+	assert.False(t, diag.HasError())
+	additionalZIPResources["windows_amd64_binary"] = "windows_amd64_binary"
 
 	initialDataSource := CompileDataSourceModel{
 		Source:         types.StringValue("provider.go"),
@@ -50,6 +63,16 @@ func TestAccCompileDataSource(t *testing.T) {
 		GOARCH:         types.StringValue("amd64"),
 		BinaryLocation: types.StringValue("windows_amd64_binary"),
 		BinaryHash:     types.StringValue("404"),
+	}
+	thirdUpdate := CompileDataSourceModel{
+		Source:         types.StringValue("provider.go"),
+		Destination:    types.StringValue("windows_amd64_binary"),
+		GOOS:           types.StringValue("windows"),
+		GOARCH:         types.StringValue("amd64"),
+		BinaryLocation: types.StringValue("windows_amd64_binary"),
+		BinaryHash:     types.StringValue("404"),
+		ZIP:            types.BoolValue(true),
+		ZIPResources:   additionalZIPResourcesGen,
 	}
 
 	mockCompiler.On("Compile",
@@ -76,13 +99,22 @@ func TestAccCompileDataSource(t *testing.T) {
 			GOARCH(secondUpdate.GOARCH.ValueString()),
 	).Times(3).
 		Return(secondUpdate.BinaryLocation.ValueString(), secondUpdate.BinaryHash.ValueString(), nil)
+	mockCompiler.On("Compile",
+		*compiler.NewConfig().
+			Source(thirdUpdate.Source.ValueString()).
+			Destination(thirdUpdate.Destination.ValueString()).
+			GOOS(thirdUpdate.GOOS.ValueString()).
+			GOARCH(thirdUpdate.GOARCH.ValueString()),
+	).Times(3).
+		Return(thirdUpdate.BinaryLocation.ValueString(), thirdUpdate.BinaryHash.ValueString(), nil)
+	mockPackager.On("Zip", thirdUpdate.BinaryLocation.ValueString()+".zip", additionalZIPResources).Times(3).Return("ff", nil)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Read testing
 			{
-				Config: compilerDataSourceFromModel("test", initialDataSource),
+				Config: compilerDataSourceFromModel(t, initialDataSource),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "source", initialDataSource.Source.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", initialDataSource.Destination.ValueString()),
@@ -94,7 +126,7 @@ func TestAccCompileDataSource(t *testing.T) {
 			},
 			// First update testing
 			{
-				Config: compilerDataSourceFromModel("test", firstUpdate),
+				Config: compilerDataSourceFromModel(t, firstUpdate),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "source", firstUpdate.Source.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", firstUpdate.Destination.ValueString()),
@@ -106,7 +138,7 @@ func TestAccCompileDataSource(t *testing.T) {
 			},
 			// Second update testing
 			{
-				Config: compilerDataSourceFromModel("test", secondUpdate),
+				Config: compilerDataSourceFromModel(t, secondUpdate),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "source", secondUpdate.Source.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", secondUpdate.Destination.ValueString()),
@@ -116,17 +148,56 @@ func TestAccCompileDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_hash", secondUpdate.BinaryHash.ValueString()),
 				),
 			},
+			// Third update testing
+			{
+				Config: compilerDataSourceFromModel(t, thirdUpdate),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "source", thirdUpdate.Source.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", thirdUpdate.Destination.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goos", thirdUpdate.GOOS.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goarch", thirdUpdate.GOARCH.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_location", thirdUpdate.BinaryLocation.ValueString()+".zip"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_hash", "ff"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "zip", "true"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "zip_resources.../../LICENSE", "LICENSE"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "zip_resources.../provider", "a/provider"),
+				),
+			},
 		},
 	})
 }
 
-func compilerDataSourceFromModel(name string, model CompileDataSourceModel) string {
+func compilerDataSourceFromModel(t *testing.T, model CompileDataSourceModel) string {
+	t.Helper()
+
+	zip := ""
+	zipResource := ""
+
+	if !model.ZIP.IsNull() && !model.ZIP.IsUnknown() && model.ZIP.ValueBool() {
+		zip = `zip = true`
+	}
+
+	if !model.ZIPResources.IsNull() && !model.ZIPResources.IsUnknown() {
+		additionalFiles := map[string]string{}
+		zipResource += "zip_resources = {\n"
+
+		diag := model.ZIPResources.ElementsAs(context.Background(), &additionalFiles, false)
+		assert.False(t, diag.HasError())
+		for k, v := range additionalFiles {
+			zipResource += fmt.Sprintf("		\"%s\" = \"%s\"\n", k, v)
+		}
+
+		zipResource += "	}"
+	}
+
 	return fmt.Sprintf(`
-data "gopackager_compile" "%s" {
+data "gopackager_compile" "test" {
 	source = %s
 	destination = %s
 	goos = %s
 	goarch = %s
+	%s
+	%s
 }
-	`, name, model.Source.String(), model.Destination.String(), model.GOOS.String(), model.GOARCH.String())
+	`, model.Source.String(), model.Destination.String(), model.GOOS.String(), model.GOARCH.String(), zip, zipResource)
 }

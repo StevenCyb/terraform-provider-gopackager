@@ -29,3 +29,4 @@ website/node_modules
 # Ignore test files
 test/compiled_example
 test/.terraform.lock.hcl
+test/*.zip

@@ -1,15 +1,26 @@
 data "gopackager_compile" "example" {
-  # Path to the main source file.
+  # Required
+  ## Path to the main source file.
   source = "main.go"
-  # Compiled output destination file.
+  ## Compiled output destination file.
   destination = "service"
-  # GOOS for compilation.
+  ## GOOS for compilation.
   goos = "linux"
-  # GOARCH for compilation.
+  ## GOARCH for compilation.
   goarch = "amd64"
+
+  # Optional
+  ## Zip the compiled binary and additional resources.
+  zip = true
+  ## Additional resources to be zipped.
+  zip_resources = {
+    "static"  = "www/static"
+    "LICENSE" = "LICENSE"
+  }
 }
 
 # `binary_location` provides the path and file name of the compiled binary.
+# If `zip = true`, this will refer to the zip file.
 output "binary_location" {
   value = data.gopackager_compile.example.binary_location
 }

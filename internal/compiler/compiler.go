@@ -1,7 +1,7 @@
 package compiler
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"os"
 	"os/exec"
@@ -23,7 +23,7 @@ func New() *Compiler {
 
 // Compile compiles the source code into a binary.
 // It takes a Config instance as parameter and Verify it beforehand.
-// It returns the binary location, the hash of the binary and an error if any.
+// It returns the binary location, the SHA256 hash of the binary and an error if any.
 func (c *Compiler) Compile(conf Config) (binaryLocation string, hash string, err error) {
 	if err := conf.Verify(); err != nil {
 		return binaryLocation, hash, err
@@ -38,7 +38,7 @@ func (c *Compiler) Compile(conf Config) (binaryLocation string, hash string, err
 		return binaryLocation, hash, err
 	}
 
-	hashSHA256 := sha1.New()
+	hashSHA256 := sha256.New()
 	binaryContent, err := os.ReadFile(binaryLocation)
 	if err != nil {
 		return binaryLocation, hash, err

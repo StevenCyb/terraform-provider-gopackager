@@ -1,4 +1,4 @@
-module github.com/stevencyb/terraform-provider-gopackager
+module github.com/stevencyb/gopackager
 
 go 1.21.5
 

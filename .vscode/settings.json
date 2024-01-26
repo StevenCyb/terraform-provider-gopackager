@@ -7,7 +7,8 @@
     "errcheck",
     "exportloopref",
     "forcetypeassert",
-    "github.com/stevencyb/terraform-provider-gopackager",
+    "github.com/stevencyb/gopackager",
+    "GOARCH",
     "gofmt",
     "golangci",
     "gomod",
@@ -30,6 +31,7 @@
     "tfprotov",
     "tfsdk",
     "unconvert",
-    "unparam"
+    "unparam",
+    "ZIPI"
   ]
 }

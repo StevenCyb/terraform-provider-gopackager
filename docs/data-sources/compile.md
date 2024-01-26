@@ -3,28 +3,39 @@
 page_title: "gopackager_compile Data Source - terraform-provider-gopackager"
 subcategory: ""
 description: |-
-  Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.
+  Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.The resource will automatically download the required dependencies and compile the source code.
 ---
 
 # gopackager_compile (Data Source)
 
-Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.
+Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.The resource will automatically download the required dependencies and compile the source code.
 
 ## Example Usage
 
 ```terraform
 data "gopackager_compile" "example" {
-  # Path to the main source file.
+  # Required
+  ## Path to the main source file.
   source = "main.go"
-  # Compiled output destination file.
+  ## Compiled output destination file.
   destination = "service"
-  # GOOS for compilation.
+  ## GOOS for compilation.
   goos = "linux"
-  # GOARCH for compilation.
+  ## GOARCH for compilation.
   goarch = "amd64"
+
+  # Optional
+  ## Zip the compiled binary and additional resources.
+  zip = true
+  ## Additional resources to be zipped.
+  zip_resources = {
+    "static"  = "www/static"
+    "LICENSE" = "LICENSE"
+  }
 }
 
 # `binary_location` provides the path and file name of the compiled binary.
+# If `zip = true`, this will refer to the zip file.
 output "binary_location" {
   value = data.gopackager_compile.example.binary_location
 }
@@ -58,6 +69,11 @@ resource "aws_lambda_function" "example" {
 - `goarch` (String) GOARCH for the compiled binary
 - `goos` (String) GOOS for the compiled binary
 - `source` (String) Path to the main file
+
+### Optional
+
+- `zip` (Boolean) Zip the compiled binary and additional resources
+- `zip_resources` (Map of String) Additional resources to include in the zip file. The binary is automatically included an copied to the root of the zip file.
 
 ### Read-Only
 
