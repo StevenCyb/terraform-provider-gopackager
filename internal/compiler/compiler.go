@@ -40,11 +40,12 @@ func (c *Compiler) Compile(conf Config) (binaryLocation string, err error) {
 
 	args := []string{"build", "-mod=mod", "-o", conf.destination}
 	if strings.HasSuffix(conf.source, ".go") {
-		args = append(args, conf.source)
+		args = append(args, filepath.Base(conf.source))
+		conf.source = filepath.Dir(conf.source)
 	}
 
 	cmd := exec.Command("go", args...)
-	cmd.Dir = filepath.Dir(conf.source)
+	cmd.Dir = conf.source
 	cmd.Env = append(os.Environ(), "GOOS="+conf.goos, "GOARCH="+conf.goarch)
 	if combinedOutput, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf(
