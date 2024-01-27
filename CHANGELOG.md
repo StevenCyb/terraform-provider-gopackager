@@ -1,3 +1,7 @@
+## 0.2.1
+FIXES:
+- working directory path on compiler is now defined correctly
+
 ## 0.2.0
 FEAT:
 - Output now has more hash variations
