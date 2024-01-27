@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	fwpath "github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/stevencyb/gopackager/internal/compiler"
@@ -216,48 +218,14 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// ValidateConfig validates the configuration.
-func (c *CompileDataSource) ValidateConfig(ctx context.Context, req datasource.ValidateConfigRequest, resp *datasource.ValidateConfigResponse) {
-	var data CompileDataSourceModel
-
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if data.Source.IsNull() || data.Source.IsUnknown() {
-		resp.Diagnostics.AddError(
-			"Missing source attribute.",
-			"Expected source path to point to a GoLang main file.",
-		)
-
-		return
-	}
-	if data.GOOS.IsNull() || data.GOOS.IsUnknown() {
-		resp.Diagnostics.AddError(
-			"Missing GOOS attribute.",
-			"Expected GOOS to be set to a supported value.",
-		)
-
-		return
-	}
-	if data.GOARCH.IsNull() || data.GOARCH.IsUnknown() {
-		resp.Diagnostics.AddError(
-			"Missing GOARCH attribute.",
-			"Expected GOARCH to be set to a supported value.",
-		)
-	}
-
-	conf := compiler.NewConfig().
-		Source(data.Source.ValueString()).
-		Destination(data.Destination.ValueString()).
-		GOOS(data.GOOS.ValueString()).
-		GOARCH(data.GOARCH.ValueString())
-	if err := conf.Verify(); err != nil {
-		resp.Diagnostics.AddError(
-			"Invalid configuration.",
-			"Expected configuration to be valid, but got '"+err.Error()+"'.",
-		)
+// ConfigValidators returns the config validators for this data source.
+func (c *CompileDataSource) ConfigValidators(context.Context) []datasource.ConfigValidator {
+	return []datasource.ConfigValidator{
+		datasourcevalidator.RequiredTogether(
+			fwpath.MatchRoot("source"),
+			fwpath.MatchRoot("destination"),
+			fwpath.MatchRoot("goos"),
+			fwpath.MatchRoot("goarch"),
+		),
 	}
 }

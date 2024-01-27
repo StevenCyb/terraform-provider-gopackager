@@ -4,6 +4,7 @@ FEAT:
 
 FIXES: 
 - Handling working directory on compile correctly
+- Fix for_each support by replacing `ValidateConfig` with `ConfigValidators`
 
 ## 0.1.1
 
