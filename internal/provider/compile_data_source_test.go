@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/stevencyb/gopackager/internal/compiler"
+	"github.com/stevencyb/gopackager/internal/hasher"
 	"github.com/stevencyb/gopackager/internal/packager"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,8 +27,10 @@ func TestAccCompileDataSource(t *testing.T) {
 
 	mockCompiler := compiler.MockCompiler{}
 	mockPackager := packager.MockZIP{}
+	mockHasher := hasher.MockHasher{}
 	globalCompiler = &mockCompiler
 	globalZIPPackager = &mockPackager
+	globalHasher = &mockHasher
 	testAccProtoV6ProviderFactories := map[string]func() (tfprotov6.ProviderServer, error){
 		"gopackager": providerserver.NewProtocol6WithError(New("test")()),
 	}
@@ -41,40 +44,69 @@ func TestAccCompileDataSource(t *testing.T) {
 	additionalZIPResources["windows_amd64_binary"] = "windows_amd64_binary"
 
 	initialDataSource := CompileDataSourceModel{
-		Source:         types.StringValue("provider.go"),
-		Destination:    types.StringValue("linux_amd64_binary"),
-		GOOS:           types.StringValue("linux"),
-		GOARCH:         types.StringValue("amd64"),
-		BinaryLocation: types.StringValue("linux_amd64_binary"),
-		BinaryHash:     types.StringValue("123"),
+		Source:             types.StringValue("provider.go"),
+		Destination:        types.StringValue("linux_amd64_binary"),
+		GOOS:               types.StringValue("linux"),
+		GOARCH:             types.StringValue("amd64"),
+		OutputPath:         types.StringValue("linux_amd64_binary"),
+		OutputMD5:          types.StringValue("md5hash"),
+		OutputSHA1:         types.StringValue("sha1hash"),
+		OutputSHA256:       types.StringValue("sha256hash"),
+		OutputSHA512:       types.StringValue("sha512hash"),
+		OutputSHA256Base64: types.StringValue("sha256base64hash"),
+		OutputSHA512Base64: types.StringValue("sha512base64hash"),
 	}
 	firstUpdate := CompileDataSourceModel{
-		Source:         types.StringValue("provider.go"),
-		Destination:    types.StringValue("windows_amd64_binary"),
-		GOOS:           types.StringValue("windows"),
-		GOARCH:         types.StringValue("amd64"),
-		BinaryLocation: types.StringValue("windows_amd64_binary"),
-		BinaryHash:     types.StringValue("321"),
+		Source:             types.StringValue("provider.go"),
+		Destination:        types.StringValue("windows_amd64_binary"),
+		GOOS:               types.StringValue("windows"),
+		GOARCH:             types.StringValue("amd64"),
+		OutputPath:         types.StringValue("windows_amd64_binary"),
+		OutputMD5:          types.StringValue("md5hash"),
+		OutputSHA1:         types.StringValue("sha1hash"),
+		OutputSHA256:       types.StringValue("sha256hash"),
+		OutputSHA512:       types.StringValue("sha512hash"),
+		OutputSHA256Base64: types.StringValue("sha256base64hash"),
+		OutputSHA512Base64: types.StringValue("sha512base64hash"),
 	}
 	secondUpdate := CompileDataSourceModel{
-		Source:         types.StringValue("provider.go"),
-		Destination:    types.StringValue("windows_amd64_binary"),
-		GOOS:           types.StringValue("windows"),
-		GOARCH:         types.StringValue("amd64"),
-		BinaryLocation: types.StringValue("windows_amd64_binary"),
-		BinaryHash:     types.StringValue("404"),
+		Source:             types.StringValue("provider.go"),
+		Destination:        types.StringValue("windows_amd64_binary"),
+		GOOS:               types.StringValue("windows"),
+		GOARCH:             types.StringValue("amd64"),
+		OutputPath:         types.StringValue("windows_amd64_binary"),
+		OutputMD5:          types.StringValue("md5hash"),
+		OutputSHA1:         types.StringValue("sha1hash"),
+		OutputSHA256:       types.StringValue("sha256hash"),
+		OutputSHA512:       types.StringValue("sha512hash"),
+		OutputSHA256Base64: types.StringValue("sha256base64hash"),
+		OutputSHA512Base64: types.StringValue("sha512base64hash"),
 	}
 	thirdUpdate := CompileDataSourceModel{
-		Source:         types.StringValue("provider.go"),
-		Destination:    types.StringValue("windows_amd64_binary"),
-		GOOS:           types.StringValue("windows"),
-		GOARCH:         types.StringValue("amd64"),
-		BinaryLocation: types.StringValue("windows_amd64_binary"),
-		BinaryHash:     types.StringValue("404"),
-		ZIP:            types.BoolValue(true),
-		ZIPResources:   additionalZIPResourcesGen,
+		Source:             types.StringValue("provider.go"),
+		Destination:        types.StringValue("windows_amd64_binary"),
+		GOOS:               types.StringValue("windows"),
+		GOARCH:             types.StringValue("amd64"),
+		OutputPath:         types.StringValue("windows_amd64_binary"),
+		OutputMD5:          types.StringValue("md5hash"),
+		OutputSHA1:         types.StringValue("sha1hash"),
+		OutputSHA256:       types.StringValue("sha256hash"),
+		OutputSHA512:       types.StringValue("sha512hash"),
+		OutputSHA256Base64: types.StringValue("sha256base64hash"),
+		OutputSHA512Base64: types.StringValue("sha512base64hash"),
+		ZIP:                types.BoolValue(true),
+		ZIPResources:       additionalZIPResourcesGen,
 	}
 
+	mockHasher.On("ReadFile", initialDataSource.OutputPath.ValueString()).Times(3).Return([]byte("123"), nil)
+	mockHasher.On("CombinedHash", []byte("123")).Times(3).Return(hasher.CombinedHash{
+		MD5:          initialDataSource.OutputMD5.ValueString(),
+		SHA1:         initialDataSource.OutputSHA1.ValueString(),
+		SHA256:       initialDataSource.OutputSHA256.ValueString(),
+		SHA512:       initialDataSource.OutputSHA512.ValueString(),
+		SHA256Base64: initialDataSource.OutputSHA256Base64.ValueString(),
+		SHA512Base64: initialDataSource.OutputSHA512Base64.ValueString(),
+	}, nil)
 	mockCompiler.On("Compile",
 		*compiler.NewConfig().
 			Source(initialDataSource.Source.ValueString()).
@@ -82,7 +114,17 @@ func TestAccCompileDataSource(t *testing.T) {
 			GOOS(initialDataSource.GOOS.ValueString()).
 			GOARCH(initialDataSource.GOARCH.ValueString()),
 	).Times(3).
-		Return(initialDataSource.BinaryLocation.ValueString(), initialDataSource.BinaryHash.ValueString(), nil)
+		Return(initialDataSource.OutputPath.ValueString(), nil)
+
+	mockHasher.On("ReadFile", firstUpdate.OutputPath.ValueString()).Times(6).Return([]byte("333"), nil)
+	mockHasher.On("CombinedHash", []byte("333")).Times(6).Return(hasher.CombinedHash{
+		MD5:          firstUpdate.OutputMD5.ValueString(),
+		SHA1:         firstUpdate.OutputSHA1.ValueString(),
+		SHA256:       firstUpdate.OutputSHA256.ValueString(),
+		SHA512:       firstUpdate.OutputSHA512.ValueString(),
+		SHA256Base64: firstUpdate.OutputSHA256Base64.ValueString(),
+		SHA512Base64: firstUpdate.OutputSHA512Base64.ValueString(),
+	}, nil)
 	mockCompiler.On("Compile",
 		*compiler.NewConfig().
 			Source(firstUpdate.Source.ValueString()).
@@ -90,7 +132,9 @@ func TestAccCompileDataSource(t *testing.T) {
 			GOOS(firstUpdate.GOOS.ValueString()).
 			GOARCH(firstUpdate.GOARCH.ValueString()),
 	).Times(3).
-		Return(firstUpdate.BinaryLocation.ValueString(), firstUpdate.BinaryHash.ValueString(), nil)
+		Return(firstUpdate.OutputPath.ValueString(), nil)
+
+	// ReadFile and CombinedHash are reused
 	mockCompiler.On("Compile",
 		*compiler.NewConfig().
 			Source(secondUpdate.Source.ValueString()).
@@ -98,7 +142,18 @@ func TestAccCompileDataSource(t *testing.T) {
 			GOOS(secondUpdate.GOOS.ValueString()).
 			GOARCH(secondUpdate.GOARCH.ValueString()),
 	).Times(3).
-		Return(secondUpdate.BinaryLocation.ValueString(), secondUpdate.BinaryHash.ValueString(), nil)
+		Return(secondUpdate.OutputPath.ValueString(), nil)
+
+	mockPackager.On("Zip", thirdUpdate.OutputPath.ValueString()+".zip", additionalZIPResources).Times(3).Return(nil)
+	mockHasher.On("ReadFile", thirdUpdate.OutputPath.ValueString()+".zip").Times(3).Return([]byte("666"), nil)
+	mockHasher.On("CombinedHash", []byte("666")).Times(3).Return(hasher.CombinedHash{
+		MD5:          firstUpdate.OutputMD5.ValueString(),
+		SHA1:         firstUpdate.OutputSHA1.ValueString(),
+		SHA256:       firstUpdate.OutputSHA256.ValueString(),
+		SHA512:       firstUpdate.OutputSHA512.ValueString(),
+		SHA256Base64: firstUpdate.OutputSHA256Base64.ValueString(),
+		SHA512Base64: firstUpdate.OutputSHA512Base64.ValueString(),
+	}, nil)
 	mockCompiler.On("Compile",
 		*compiler.NewConfig().
 			Source(thirdUpdate.Source.ValueString()).
@@ -106,8 +161,7 @@ func TestAccCompileDataSource(t *testing.T) {
 			GOOS(thirdUpdate.GOOS.ValueString()).
 			GOARCH(thirdUpdate.GOARCH.ValueString()),
 	).Times(3).
-		Return(thirdUpdate.BinaryLocation.ValueString(), thirdUpdate.BinaryHash.ValueString(), nil)
-	mockPackager.On("Zip", thirdUpdate.BinaryLocation.ValueString()+".zip", additionalZIPResources).Times(3).Return("ff", nil)
+		Return(thirdUpdate.OutputPath.ValueString(), nil)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -120,8 +174,13 @@ func TestAccCompileDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", initialDataSource.Destination.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goos", initialDataSource.GOOS.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goarch", initialDataSource.GOARCH.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_location", initialDataSource.BinaryLocation.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_hash", initialDataSource.BinaryHash.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_path", initialDataSource.OutputPath.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_md5", initialDataSource.OutputMD5.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha1", initialDataSource.OutputSHA1.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256", initialDataSource.OutputSHA256.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512", initialDataSource.OutputSHA512.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256_base64", initialDataSource.OutputSHA256Base64.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512_base64", initialDataSource.OutputSHA512Base64.ValueString()),
 				),
 			},
 			// First update testing
@@ -132,8 +191,13 @@ func TestAccCompileDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", firstUpdate.Destination.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goos", firstUpdate.GOOS.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goarch", firstUpdate.GOARCH.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_location", firstUpdate.BinaryLocation.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_hash", firstUpdate.BinaryHash.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_path", firstUpdate.OutputPath.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_md5", firstUpdate.OutputMD5.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha1", firstUpdate.OutputSHA1.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256", firstUpdate.OutputSHA256.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512", firstUpdate.OutputSHA512.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256_base64", firstUpdate.OutputSHA256Base64.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512_base64", firstUpdate.OutputSHA512Base64.ValueString()),
 				),
 			},
 			// Second update testing
@@ -144,8 +208,13 @@ func TestAccCompileDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", secondUpdate.Destination.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goos", secondUpdate.GOOS.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goarch", secondUpdate.GOARCH.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_location", secondUpdate.BinaryLocation.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_hash", secondUpdate.BinaryHash.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_path", secondUpdate.OutputPath.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_md5", secondUpdate.OutputMD5.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha1", secondUpdate.OutputSHA1.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256", secondUpdate.OutputSHA256.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512", secondUpdate.OutputSHA512.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256_base64", secondUpdate.OutputSHA256Base64.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512_base64", secondUpdate.OutputSHA512Base64.ValueString()),
 				),
 			},
 			// Third update testing
@@ -156,8 +225,13 @@ func TestAccCompileDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "destination", thirdUpdate.Destination.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goos", thirdUpdate.GOOS.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "goarch", thirdUpdate.GOARCH.ValueString()),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_location", thirdUpdate.BinaryLocation.ValueString()+".zip"),
-					resource.TestCheckResourceAttr("data.gopackager_compile.test", "binary_hash", "ff"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_path", thirdUpdate.OutputPath.ValueString()+".zip"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_md5", thirdUpdate.OutputMD5.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha1", thirdUpdate.OutputSHA1.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256", thirdUpdate.OutputSHA256.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512", thirdUpdate.OutputSHA512.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha256_base64", thirdUpdate.OutputSHA256Base64.ValueString()),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_sha512_base64", thirdUpdate.OutputSHA512Base64.ValueString()),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "zip", "true"),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "zip_resources.../../LICENSE", "LICENSE"),
 					resource.TestCheckResourceAttr("data.gopackager_compile.test", "zip_resources.../provider", "a/provider"),

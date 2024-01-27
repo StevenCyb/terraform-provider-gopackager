@@ -1,3 +1,11 @@
+## 0.2.0
+FEAT:
+- Output now has more hash variations
+
+FIXES: 
+- Handling working directory on compile correctly
+- Fix for_each support by replacing `ValidateConfig` with `ConfigValidators`
+
 ## 0.1.1
 
 FIXES:
