@@ -1,8 +1,6 @@
 package compiler
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -16,7 +14,7 @@ var ErrUnableToGetWorkingDirectory = errors.New("unable to get current working d
 
 // CompilerI is an interface for the Compiler type.
 type CompilerI interface {
-	Compile(conf Config) (binaryLocation string, hash string, err error)
+	Compile(conf Config) (binaryLocation string, err error)
 }
 
 // Compiler is a type that implements the CompilerI interface.
@@ -31,44 +29,28 @@ func New() *Compiler {
 // Compile compiles the source code into a binary.
 // It takes a Config instance as parameter and Verify it beforehand.
 // It returns the binary location, the SHA256 hash of the binary and an error if any.
-func (c *Compiler) Compile(conf Config) (binaryLocation string, hash string, err error) {
+func (c *Compiler) Compile(conf Config) (binaryLocation string, err error) {
 	if err := conf.Verify(); err != nil {
-		return binaryLocation, hash, err
+		return binaryLocation, err
+	} else if conf.source, err = filepath.Abs(conf.source); err != nil {
+		return "", fmt.Errorf("unable to get absolute path of source: %w", err)
+	} else if conf.destination, err = filepath.Abs(conf.destination); err != nil {
+		return "", fmt.Errorf("unable to get absolute path of destination: %w", err)
 	}
 
-	var cmd *exec.Cmd
-
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return "", "", ErrUnableToGetWorkingDirectory
-	}
-
-	binaryLocation = filepath.Join(workingDir, conf.GetDestination())
-	workingDir = filepath.Dir(conf.source)
-
+	args := []string{"build", "-mod=mod", "-o", conf.destination}
 	if strings.HasSuffix(conf.source, ".go") {
-		cmd = exec.Command("go", "build", "-mod=mod", "-o", binaryLocation, conf.source)
-	} else {
-		cmd = exec.Command("go", "build", "-mod=mod", "-o", binaryLocation)
+		args = append(args, conf.source)
 	}
 
-	cmd.Dir = workingDir
+	cmd := exec.Command("go", args...)
+	cmd.Dir = filepath.Dir(conf.source)
 	cmd.Env = append(os.Environ(), "GOOS="+conf.goos, "GOARCH="+conf.goarch)
-
 	if combinedOutput, err := cmd.CombinedOutput(); err != nil {
-		return binaryLocation, hash, fmt.Errorf(
+		return "", fmt.Errorf(
 			"unable to compile binary: %w, \n\tcommand: %s, \n\toutput: %s",
 			err, cmd.String(), string(combinedOutput))
 	}
 
-	hashSHA256 := sha256.New()
-	binaryContent, err := os.ReadFile(binaryLocation)
-	if err != nil {
-		return binaryLocation, hash, err
-	}
-
-	hashSHA256.Write(binaryContent)
-	hash = hex.EncodeToString(hashSHA256.Sum(nil))
-
-	return binaryLocation, hash, nil
+	return conf.destination, nil
 }

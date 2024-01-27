@@ -19,17 +19,30 @@ data "gopackager_compile" "example" {
   }
 }
 
-# `binary_location` provides the path and file name of the compiled binary.
-# If `zip = true`, this will refer to the zip file.
-output "binary_location" {
-  value = data.gopackager_compile.example.binary_location
-}
-
-# `binary_hash` provides the hash of the compiled binary.
-# There are multiple factors that can affect the hash, that means
-# false positive changes are possible.
-output "binary_hash" {
-  value = data.gopackager_compile.example.binary_hash
+output "example" {
+  value = {
+    # `output_path` provides the path and file name of the compiled binary.
+    # If `zip = true`, this will refer to the zip file.
+    output_path = data.gopackager_compile.example.output_path
+    # `output_md5` provides the md5 hash of the compiled binary.
+    # There are multiple factors that can affect the hash, that means
+    output_md5 = data.gopackager_compile.example.output_md5
+    # `output_sha1` provides the SHA1 hash of the compiled binary.
+    # There are multiple factors that can affect the hash, that means
+    output_sha1 = data.gopackager_compile.example.output_sha1
+    # `output_sha256` provides the SHA256 hash of the compiled binary.
+    # There are multiple factors that can affect the hash, that means
+    output_sha256 = data.gopackager_compile.example.output_sha256
+    # `output_sha512` provides the SHA512 hash of the compiled binary.
+    # There are multiple factors that can affect the hash, that means
+    output_sha512 = data.gopackager_compile.example.output_sha512
+    # `output_sha256_base64` provides the Base64 ecndoded SHA256 hash of the compiled binary.
+    # There are multiple factors that can affect the hash, that means
+    output_sha256_base64 = data.gopackager_compile.example.output_sha256_base64
+    # `output_sha512_base64` provides the Base64 ecndoded SHA512 hash of the compiled binary.
+    # There are multiple factors that can affect the hash, that means
+    output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
+  }
 }
 
 # Example on how to use it with AWS lambda.
@@ -39,7 +52,7 @@ resource "aws_lambda_function" "example" {
   handler          = "service"
   role             = aws_iam_role.lambda_role.arn
   timeout          = 15
-  filename         = data.gopackager_compile.example.binary_location
-  source_code_hash = data.gopackager_compile.example.binary_hash
+  filename         = data.gopackager_compile.example.output_path
+  source_code_hash = data.gopackager_compile.example.output_md5
   memory_size      = 128
 }

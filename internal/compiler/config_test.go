@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfig(t *testing.T) {
+func TestAccConfig(t *testing.T) {
 	t.Parallel()
 
 	expected := Config{
@@ -42,7 +42,7 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, expected.goarch, actual.GetGOARCH())
 }
 
-func TestConfigVerify(t *testing.T) {
+func TestAccConfigVerify(t *testing.T) {
 	t.Parallel()
 
 	_, mainFile, _, ok := runtime.Caller(0)

@@ -14,6 +14,7 @@
     "gomod",
     "gopackager",
     "gosimple",
+    "hasher",
     "ineffassign",
     "makezero",
     "nilerr",

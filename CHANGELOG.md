@@ -1,3 +1,10 @@
+## 0.2.0
+FEAT:
+- Output now has more hash variations
+
+FIXES: 
+- Handling working directory on compile correctly
+
 ## 0.1.1
 
 FIXES:

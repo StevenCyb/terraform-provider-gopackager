@@ -8,8 +8,8 @@ type MockCompiler struct {
 }
 
 // Compile is a mock implementation of the Compiler.Compile method.
-func (m *MockCompiler) Compile(conf Config) (string, string, error) {
+func (m *MockCompiler) Compile(conf Config) (string, error) {
 	ret := m.Called(conf)
 
-	return ret.Get(0).(string), ret.Get(1).(string), ret.Error(2) //nolint:forcetypeassert
+	return ret.Get(0).(string), ret.Error(1) //nolint:forcetypeassert
 }

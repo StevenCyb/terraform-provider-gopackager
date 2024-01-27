@@ -8,8 +8,8 @@ type MockZIP struct {
 }
 
 // Zip is a mocked method.
-func (m *MockZIP) Zip(zipPath string, files map[string]string) (string, error) {
+func (m *MockZIP) Zip(zipPath string, files map[string]string) error {
 	args := m.Called(zipPath, files)
 
-	return args.String(0), args.Error(1)
+	return args.Error(0)
 }

@@ -2,8 +2,6 @@ package packager
 
 import (
 	"archive/zip"
-	"crypto/sha256"
-	"encoding/hex"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,7 +9,7 @@ import (
 
 // ZIPI is an interface for ZIP type.
 type ZIPI interface {
-	Zip(zipPath string, files map[string]string) (string, error)
+	Zip(zipPath string, files map[string]string) error
 }
 
 // Provide ZIP packaging.
@@ -25,14 +23,14 @@ func New() *ZIP {
 // Zip given files.
 // `files` is a map of file (including path) to the file path inside of the ZIP.
 // Returns ZIP file SHA256 hash and an error if any.
-func (z ZIP) Zip(zipPath string, files map[string]string) (string, error) {
+func (z ZIP) Zip(zipPath string, files map[string]string) error {
 	if err := os.Remove(zipPath); err != nil && !os.IsNotExist(err) {
-		return "", err
+		return err
 	}
 
 	archive, err := os.Create(zipPath)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	defer archive.Close()
@@ -75,18 +73,9 @@ func (z ZIP) Zip(zipPath string, files map[string]string) (string, error) {
 			return nil
 		})
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
-	hashSHA256 := sha256.New()
-	binaryContent, err := os.ReadFile(zipPath)
-	if err != nil {
-		return "", err
-	}
-
-	hashSHA256.Write(binaryContent)
-	hash := hex.EncodeToString(hashSHA256.Sum(nil))
-
-	return hash, nil
+	return nil
 }

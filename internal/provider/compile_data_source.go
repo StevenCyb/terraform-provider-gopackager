@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/stevencyb/gopackager/internal/compiler"
+	"github.com/stevencyb/gopackager/internal/hasher"
 	"github.com/stevencyb/gopackager/internal/packager"
 )
 
@@ -20,6 +21,10 @@ var globalCompiler compiler.CompilerI = compiler.New()
 // This is the global ZIP packager instance.
 // This instance is replaced by the mock instance during tests.
 var globalZIPPackager packager.ZIPI = packager.New()
+
+// This is the global hasher instance.
+// This instance is replaced by the mock instance during tests.
+var globalHasher hasher.HasherI = hasher.New()
 
 // CompileDataSourceModel is the model for the compile data source.
 type CompileDataSourceModel struct {
@@ -32,8 +37,13 @@ type CompileDataSourceModel struct {
 	ZIP          types.Bool `tfsdk:"zip"`
 	ZIPResources types.Map  `tfsdk:"zip_resources"`
 	// Output
-	BinaryLocation types.String `tfsdk:"binary_location"`
-	BinaryHash     types.String `tfsdk:"binary_hash"`
+	OutputPath         types.String `tfsdk:"output_path"`
+	OutputMD5          types.String `tfsdk:"output_md5"`
+	OutputSHA1         types.String `tfsdk:"output_sha1"`
+	OutputSHA256       types.String `tfsdk:"output_sha256"`
+	OutputSHA512       types.String `tfsdk:"output_sha512"`
+	OutputSHA256Base64 types.String `tfsdk:"output_sha256_base64"`
+	OutputSHA512Base64 types.String `tfsdk:"output_sha512_base64"`
 }
 
 // CompileDataSource is the data source for the compile resource.
@@ -61,24 +71,24 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			// Required input
 			"source": schema.StringAttribute{
-				MarkdownDescription: "Path to the main file",
+				MarkdownDescription: "Path to the main file.",
 				Required:            true,
 			},
 			"destination": schema.StringAttribute{
-				MarkdownDescription: "Path for the compiled binary (or random UUID)",
+				MarkdownDescription: "Path for the compiled binary (or random UUID).",
 				Required:            true,
 			},
 			"goos": schema.StringAttribute{
-				MarkdownDescription: "GOOS for the compiled binary",
+				MarkdownDescription: "GOOS for the compiled binary.",
 				Required:            true,
 			},
 			"goarch": schema.StringAttribute{
-				MarkdownDescription: "GOARCH for the compiled binary",
+				MarkdownDescription: "GOARCH for the compiled binary.",
 				Required:            true,
 			},
 			// Output input
 			"zip": schema.BoolAttribute{
-				MarkdownDescription: "Zip the compiled binary and additional resources",
+				MarkdownDescription: "Zip the compiled binary and additional resources.",
 				Optional:            true,
 			},
 			"zip_resources": schema.MapAttribute{
@@ -87,13 +97,33 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				ElementType:         types.StringType,
 			},
 			// Output
-			"binary_location": schema.StringAttribute{
+			"output_path": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Binary location of compiled file.",
+				MarkdownDescription: "Output path for the compiled binary or compressed ZIP file.",
 			},
-			"binary_hash": schema.StringAttribute{
+			"output_md5": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Binary hash for compiled file.",
+				MarkdownDescription: "MD5 hash of the compiled binary or compressed ZIP file.",
+			},
+			"output_sha1": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "SHA1 hash of the compiled binary or compressed ZIP file.",
+			},
+			"output_sha256": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "SHA256 hash of the compiled binary or compressed ZIP file.",
+			},
+			"output_sha512": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "SHA512 hash of the compiled binary or compressed ZIP file.",
+			},
+			"output_sha256_base64": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Base64 encoded SHA256 hash of the compiled binary or compressed ZIP file.",
+			},
+			"output_sha512_base64": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.",
 			},
 		},
 	}
@@ -131,7 +161,7 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	tflog.Trace(ctx, "Compiling GoLang source code")
 
-	binaryLocation, hash, err := globalCompiler.Compile(*conf)
+	outputPath, err := globalCompiler.Compile(*conf)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to compile binary.",
@@ -151,11 +181,10 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 		tflog.Trace(ctx, fmt.Sprintf("Zipping compiled binary with %d additional files", len(additionalFiles)))
 
-		additionalFiles[binaryLocation] = filepath.Base(binaryLocation)
-		binaryLocation += ".zip"
+		additionalFiles[outputPath] = filepath.Base(outputPath)
+		outputPath += ".zip"
 
-		hash, err = globalZIPPackager.Zip(binaryLocation, additionalFiles)
-		if err != nil {
+		if err = globalZIPPackager.Zip(outputPath, additionalFiles); err != nil {
 			resp.Diagnostics.AddError(
 				"Unable to create ZIP file.",
 				"ZIP failed with: '"+err.Error()+"'.",
@@ -163,8 +192,26 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		}
 	}
 
-	data.BinaryHash = types.StringValue(hash)
-	data.BinaryLocation = types.StringValue(binaryLocation)
+	tflog.Trace(ctx, "Compute hashes for created file")
+	content, err := globalHasher.ReadFile(outputPath)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to read compiled binary or ZIP file.",
+			"Reading compiled binary or ZIP file failed with: '"+err.Error()+"'.",
+		)
+
+		return
+	}
+
+	combinedHashes := globalHasher.CombinedHash(content)
+
+	data.OutputPath = types.StringValue(outputPath)
+	data.OutputMD5 = types.StringValue(combinedHashes.MD5)
+	data.OutputSHA1 = types.StringValue(combinedHashes.SHA1)
+	data.OutputSHA256 = types.StringValue(combinedHashes.SHA256)
+	data.OutputSHA512 = types.StringValue(combinedHashes.SHA512)
+	data.OutputSHA256Base64 = types.StringValue(combinedHashes.SHA256Base64)
+	data.OutputSHA512Base64 = types.StringValue(combinedHashes.SHA512Base64)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
