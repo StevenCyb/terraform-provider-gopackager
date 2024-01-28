@@ -56,21 +56,4 @@ func TestAccCompiler(t *testing.T) {
 		assert.NotEmpty(t, binaryPath)
 		assert.True(t, strings.HasSuffix(binaryPath, "binary2"))
 	})
-
-	t.Run("REMOVE", func(t *testing.T) {
-		t.Parallel()
-
-		conf := NewConfig().
-			Source("/Users/steven/Projects/Siegenia/infrastructure/src/cmd/device_register/").
-			Destination("binary2").
-			GOOS("linux").
-			GOARCH("amd64")
-		assert.NotNil(t, conf)
-
-		compiler := New()
-		binaryPath, err := compiler.Compile(*conf)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, binaryPath)
-		assert.True(t, strings.HasSuffix(binaryPath, "binary2"))
-	})
 }
