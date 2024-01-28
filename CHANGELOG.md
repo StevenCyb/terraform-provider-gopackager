@@ -1,6 +1,10 @@
+## 0.2.2 (unreleased)
+CHORE:
+* General improvements (can include including docs, code formatting, comments, etc.)
+
 ## 0.2.1
 FIXES:
-- working directory path on compiler is now defined correctly
+- Working directory path on compiler is now defined correctly
 
 ## 0.2.0
 FEAT:
