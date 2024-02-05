@@ -3,12 +3,12 @@
 page_title: "gopackager Provider"
 subcategory: ""
 description: |-
-  Provides a resource to compile GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.
+  Provides a resource to compile GoLang source code into a binary executable. This resource requires GoLang to be installed on the system. For more details see gopackager_compile https://registry.terraform.io/providers/StevenCyb/gopackager/latest/docs/data-sources/compile.
 ---
 
 # gopackager Provider
 
-Provides a resource to compile GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.
+Provides a resource to compile GoLang source code into a binary executable. This resource requires GoLang to be installed on the system. For more details see [gopackager_compile](https://registry.terraform.io/providers/StevenCyb/gopackager/latest/docs/data-sources/compile).
 
 ## Example Usage
 

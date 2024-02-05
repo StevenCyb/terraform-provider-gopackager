@@ -1,4 +1,10 @@
-## 0.2.2 (unreleased)
+## 0.2.2
+FEAT:
+- Hashes for ZIP files are now computed by the content of the ZIP instead of the ZIP files itself
+
+FIXES:
+- Fix the SHA512 hash
+
 CHORE:
 * General improvements (can include including docs, code formatting, comments, etc.)
 
