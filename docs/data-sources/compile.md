@@ -3,21 +3,21 @@
 page_title: "gopackager_compile Data Source - terraform-provider-gopackager"
 subcategory: ""
 description: |-
-  Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.The resource will automatically download the required dependencies and compile the source code.
+  Compiles GoLang source code into a binary executable and optionally creates a ZIP with additional files. This resource requires GoLang to be installed on the system. The resource will automatically download the required dependencies and compile the source code.
 ---
 
 # gopackager_compile (Data Source)
 
-Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.The resource will automatically download the required dependencies and compile the source code.
+Compiles GoLang source code into a binary executable and optionally creates a ZIP with additional files. This resource requires GoLang to be installed on the system. The resource will automatically download the required dependencies and compile the source code.
 
 ## Example Usage
 
 ```terraform
 data "gopackager_compile" "example" {
   # Required
-  ## Path to the main source file.
+  ## Path to the main GoLang source or the root path of this file.
   source = "main.go"
-  ## Compiled output destination file.
+  ## Output destination file.
   destination = "service"
   ## GOOS for compilation.
   goos = "linux"

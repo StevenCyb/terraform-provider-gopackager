@@ -63,8 +63,9 @@ func (c *CompileDataSource) Metadata(ctx context.Context, req datasource.Metadat
 
 // Sets the provider schema.
 func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	description := `Compiles GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.` +
-		`The resource will automatically download the required dependencies and compile the source code.`
+	description := `Compiles GoLang source code into a binary executable and optionally creates a ZIP with additional files.` +
+		` This resource requires GoLang to be installed on the system.` +
+		` The resource will automatically download the required dependencies and compile the source code.`
 
 	resp.Schema = schema.Schema{
 		MarkdownDescription: description,

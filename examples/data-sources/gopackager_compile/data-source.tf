@@ -1,8 +1,8 @@
 data "gopackager_compile" "example" {
   # Required
-  ## Path to the main source file.
+  ## Path to the main GoLang source or the root path of this file.
   source = "main.go"
-  ## Compiled output destination file.
+  ## Output destination file.
   destination = "service"
   ## GOOS for compilation.
   goos = "linux"

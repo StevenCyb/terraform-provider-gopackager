@@ -37,7 +37,7 @@ func (g *GoPackagerProvider) Metadata(ctx context.Context, req provider.Metadata
 
 // Sets the provider schema.
 func (g *GoPackagerProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
-	description := `Provides a resource to compile GoLang source code into a binary executable. This resource requires GoLang to be installed on the system.`
+	description := `Provides a resource to compile GoLang source code into a binary executable. This resource requires GoLang to be installed on the system. For more details see [gopackager_compile](https://registry.terraform.io/providers/StevenCyb/gopackager/latest/docs/data-sources/compile).`
 	resp.Schema = schema.Schema{
 		MarkdownDescription: description,
 		Description:         description,
