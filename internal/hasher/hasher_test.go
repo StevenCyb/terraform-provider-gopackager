@@ -1,6 +1,8 @@
 package hasher
 
 import (
+	"archive/zip"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,10 +23,44 @@ func TestAccHasher(t *testing.T) {
 	t.Run("ReadFile", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Success", func(t *testing.T) {
+		t.Run("Plane_Success", func(t *testing.T) {
 			t.Parallel()
 
 			content, err := hasher.ReadFile("hasher_test.go")
+			assert.NoError(t, err)
+			assert.NotNil(t, content)
+		})
+
+		t.Run("ZIP_Success", func(t *testing.T) {
+			t.Parallel()
+
+			testFileName := "unit_test.zip"
+
+			file, err := os.Create(testFileName)
+			assert.NoError(t, err)
+
+			zipWriter := zip.NewWriter(file)
+
+			zipFile, err := zipWriter.Create("test.txt")
+			assert.NoError(t, err)
+
+			_, err = zipFile.Write([]byte("test"))
+			assert.NoError(t, err)
+
+			zipFile2, err := zipWriter.Create("dir/test2.txt")
+			assert.NoError(t, err)
+
+			_, err = zipFile2.Write([]byte("test2"))
+			assert.NoError(t, err)
+
+			zipWriter.Close()
+			file.Close()
+
+			t.Cleanup(func() {
+				os.Remove(testFileName)
+			})
+
+			content, err := hasher.ReadFile(testFileName)
 			assert.NoError(t, err)
 			assert.NotNil(t, content)
 		})

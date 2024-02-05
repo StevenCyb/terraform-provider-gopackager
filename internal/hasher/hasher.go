@@ -1,13 +1,16 @@
 package hasher
 
 import (
+	"archive/zip"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"io"
 	"os"
+	"strings"
 )
 
 // HasherI is the interface for Hasher.
@@ -41,7 +44,48 @@ func New() *Hasher {
 }
 
 // ReadFile reads a file from the filesystem.
+// If file is ZIP file, it reads the content of all files in the ZIP file.
 func (h *Hasher) ReadFile(path string) ([]byte, error) {
+	if strings.HasSuffix(path, ".zip") {
+		return h.readZipFile(path)
+	}
+
+	return h.readPlaneFile(path)
+}
+
+// reads the file content from a zip file.
+func (h *Hasher) readZipFile(path string) ([]byte, error) {
+	archive, err := zip.OpenReader(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer archive.Close()
+
+	var binaryContent []byte
+
+	for _, file := range archive.File {
+		fileReader, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+
+		defer fileReader.Close()
+
+		fileContent, err := io.ReadAll(fileReader)
+		if err != nil {
+			return nil, err
+		}
+
+		fileContent = append([]byte("__"+file.Name+"__"), fileContent...)
+		binaryContent = append(binaryContent, fileContent...)
+	}
+
+	return binaryContent, nil
+}
+
+// reads a file content.
+func (h *Hasher) readPlaneFile(path string) ([]byte, error) {
 	binaryContent, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
