@@ -17,7 +17,7 @@ import (
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 var (
-	version string = "v0.2.3"
+	version string = "v0.2.4"
 )
 
 func main() {

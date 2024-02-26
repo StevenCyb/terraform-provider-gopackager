@@ -1,6 +1,10 @@
-## 0.2.3
+## 0.2.4
 FIXES:
 - ZIP hash is now computed based on the ZIP content and not contained files
+
+## 0.2.3
+CHORE:
+- DOC improvement
 
 ## 0.2.2
 FEAT:
