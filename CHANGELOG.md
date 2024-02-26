@@ -1,3 +1,7 @@
+## 0.2.3
+FIXES:
+- ZIP hash is now computed based on the ZIP content and not contained files
+
 ## 0.2.2
 FEAT:
 - Hashes for ZIP files are now computed by the content of the ZIP instead of the ZIP files itself
@@ -6,7 +10,7 @@ FIXES:
 - Fix the SHA512 hash
 
 CHORE:
-* General improvements (can include including docs, code formatting, comments, etc.)
+- General improvements (can include including docs, code formatting, comments, etc.)
 
 ## 0.2.1
 FIXES:
