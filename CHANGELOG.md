@@ -1,3 +1,7 @@
+## 0.2.5
+CHORE:
+- Base64 hashes are now computed based on the raw hash rather then on the hexadecimal encoded 
+
 ## 0.2.4
 FIXES:
 - ZIP hash is now computed based on the ZIP content and not contained files

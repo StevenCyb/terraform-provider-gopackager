@@ -51,7 +51,7 @@ func (h *Hasher) ReadFile(path string) ([]byte, error) {
 	return binaryContent, nil
 }
 
-// MD5 hashes the binary content with MD5.
+// MD5 hashes the binary content with MD5 and returns the hexadecimal encoded string.
 func (h *Hasher) MD5(binaryContent []byte) string {
 	hashMD5 := md5.New()
 	hashMD5.Write(binaryContent)
@@ -60,7 +60,7 @@ func (h *Hasher) MD5(binaryContent []byte) string {
 	return hash
 }
 
-// SHA1 hashes the binary content with SHA1.
+// SHA1 hashes the binary content with SHA1 and returns the hexadecimal encoded string.
 func (h *Hasher) SHA1(binaryContent []byte) string {
 	hashSHA1 := sha1.New()
 	hashSHA1.Write(binaryContent)
@@ -69,7 +69,7 @@ func (h *Hasher) SHA1(binaryContent []byte) string {
 	return hash
 }
 
-// SHA256 hashes the binary content with SHA256.
+// SHA256 hashes the binary content with SHA256 and returns the hexadecimal encoded string.
 func (h *Hasher) SHA256(binaryContent []byte) string {
 	hashSHA256 := sha256.New()
 	hashSHA256.Write(binaryContent)
@@ -78,7 +78,7 @@ func (h *Hasher) SHA256(binaryContent []byte) string {
 	return hash
 }
 
-// SHA512 hashes the binary content with SHA512.
+// SHA512 hashes the binary content with SHA512 and returns the hexadecimal encoded string..
 func (h *Hasher) SHA512(binaryContent []byte) string {
 	hashSHA512 := sha512.New()
 	hashSHA512.Write(binaryContent)
@@ -89,16 +89,22 @@ func (h *Hasher) SHA512(binaryContent []byte) string {
 
 // SHA256Base64 hashes the binary content with SHA256 and encodes it with base64.
 func (h *Hasher) SHA256Base64(binaryContent []byte) string {
-	hash := h.SHA256(binaryContent)
-	hash = base64.StdEncoding.EncodeToString([]byte(hash))
+	hashSHA256 := sha256.New()
+	hashSHA256.Write(binaryContent)
+
+	hashBytes := hashSHA256.Sum(nil)
+	hash := base64.StdEncoding.EncodeToString(hashBytes)
 
 	return hash
 }
 
 // SHA512Base64 hashes the binary content with SHA512 and encodes it with base64.
 func (h *Hasher) SHA512Base64(binaryContent []byte) string {
-	hash := h.SHA512(binaryContent)
-	hash = base64.StdEncoding.EncodeToString([]byte(hash))
+	hashSHA256 := sha512.New()
+	hashSHA256.Write(binaryContent)
+
+	hashBytes := hashSHA256.Sum(nil)
+	hash := base64.StdEncoding.EncodeToString(hashBytes)
 
 	return hash
 }
