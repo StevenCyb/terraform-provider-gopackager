@@ -68,7 +68,7 @@ resource "aws_lambda_function" "example" {
   role             = aws_iam_role.lambda_role.arn
   timeout          = 15
   filename         = data.gopackager_compile.example.output_path
-  source_code_hash = data.gopackager_compile.example.output_md5
+  source_code_hash = data.gopackager_compile.example.output_sha256_base64
   memory_size      = 128
 }
 ```
