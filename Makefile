@@ -27,3 +27,9 @@ local_mac_install:
 	@mkdir -p ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS}_${OS_ARCH}
 	@mv ${BINARY} ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS}_${OS_ARCH}
 	@echo "Installed to ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS}_${OS_ARCH}"
+	@echo "Cleanup test directory"
+	@rm -Rf test/.terraform
+	@rm -f test/.terraform.lock.hcl
+	@echo "Prepare test directory"
+	@sed -i -r -E 's/"[0-9]+\.[0-9]+\.[0-9]+"/"${VERSION}"/g' 'test/main.tf'
+	@cd test && terraform init
