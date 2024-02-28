@@ -25,6 +25,9 @@ data "gopackager_compile" "example" {
   goarch = "amd64"
 
   # Optional
+  ## Git repository with source code.
+  git_repository = "git@....git"
+  git_branch     = "main"
   ## Zip the compiled binary and additional resources.
   zip = true
   ## Additional resources to be zipped.
@@ -81,10 +84,12 @@ resource "aws_lambda_function" "example" {
 - `destination` (String) Path for the compiled binary (or random UUID).
 - `goarch` (String) GOARCH for the compiled binary.
 - `goos` (String) GOOS for the compiled binary.
-- `source` (String) Path to the main file.
+- `source` (String) Path to the main file or HTTPS/SSH Git URL.
 
 ### Optional
 
+- `git_branch` (String) Branch to checkout from the Git repository.
+- `git_repository` (String) Git repository to clone and compile.
 - `zip` (Boolean) Zip the compiled binary and additional resources.
 - `zip_resources` (Map of String) Additional resources to include in the zip file. The binary is automatically included an copied to the root of the zip file.
 

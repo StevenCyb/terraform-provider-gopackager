@@ -10,6 +10,9 @@ data "gopackager_compile" "example" {
   goarch = "amd64"
 
   # Optional
+  ## Git repository with source code.
+  git_repository = "git@....git"
+  git_branch     = "main"
   ## Zip the compiled binary and additional resources.
   zip = true
   ## Additional resources to be zipped.
