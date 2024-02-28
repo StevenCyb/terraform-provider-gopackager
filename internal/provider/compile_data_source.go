@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/stevencyb/gopackager/internal/compiler"
+	"github.com/stevencyb/gopackager/internal/getter"
 	"github.com/stevencyb/gopackager/internal/hasher"
 	"github.com/stevencyb/gopackager/internal/packager"
 )
@@ -28,6 +29,10 @@ var globalZIPPackager packager.ZIPI = packager.New()
 // This instance is replaced by the mock instance during tests.
 var globalHasher hasher.HasherI = hasher.New()
 
+// This is the global getter instance.
+// This instance is replaced by the mock instance during tests.
+var globalGitGetter getter.GitI = getter.New()
+
 // CompileDataSourceModel is the model for the compile data source.
 type CompileDataSourceModel struct {
 	// Input
@@ -36,8 +41,10 @@ type CompileDataSourceModel struct {
 	GOOS        types.String `tfsdk:"goos"`
 	GOARCH      types.String `tfsdk:"goarch"`
 	// Optional
-	ZIP          types.Bool `tfsdk:"zip"`
-	ZIPResources types.Map  `tfsdk:"zip_resources"`
+	GitRepository types.String `tfsdk:"git_repository"`
+	GitBranch     types.String `tfsdk:"git_branch"`
+	ZIP           types.Bool   `tfsdk:"zip"`
+	ZIPResources  types.Map    `tfsdk:"zip_resources"`
 	// Output
 	OutputPath         types.String `tfsdk:"output_path"`
 	OutputMD5          types.String `tfsdk:"output_md5"`
@@ -74,7 +81,7 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			// Required input
 			"source": schema.StringAttribute{
-				MarkdownDescription: "Path to the main file.",
+				MarkdownDescription: "Path to the main file or HTTPS/SSH Git URL.",
 				Required:            true,
 			},
 			"destination": schema.StringAttribute{
@@ -89,7 +96,15 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				MarkdownDescription: "GOARCH for the compiled binary.",
 				Required:            true,
 			},
-			// Output input
+			// Optional input
+			"git_repository": schema.StringAttribute{
+				MarkdownDescription: "Git repository to clone and compile.",
+				Optional:            true,
+			},
+			"git_branch": schema.StringAttribute{
+				MarkdownDescription: "Branch to checkout from the Git repository.",
+				Optional:            true,
+			},
 			"zip": schema.BoolAttribute{
 				MarkdownDescription: "Zip the compiled binary and additional resources.",
 				Optional:            true,
@@ -147,7 +162,6 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
 	tflog.Trace(ctx, "Checking configuration")
 
 	conf := compiler.NewConfig().
@@ -160,6 +174,11 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			"Invalid configuration.",
 			"Expected configuration to be valid, but got '"+err.Error()+"'.",
 		)
+	}
+
+	if !data.GitRepository.IsNull() && !data.GitRepository.IsUnknown() {
+		tflog.Trace(ctx, "Cloning Git repository.")
+		// TODO implement
 	}
 
 	tflog.Trace(ctx, "Compiling GoLang source code")
