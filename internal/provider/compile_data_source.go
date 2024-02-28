@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/datasourcevalidator"
@@ -178,7 +179,17 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	if !data.GitRepository.IsNull() && !data.GitRepository.IsUnknown() {
 		tflog.Trace(ctx, "Cloning Git repository.")
-		// TODO implement
+		gitPath, err := globalGitGetter.Get(conf.GetDestination(), data.GitRepository.ValueString(), data.GitBranch.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Unable to clone Git repository.",
+				"Cloning Git repository failed with: '"+err.Error()+"'.",
+			)
+
+			return
+		}
+
+		conf.Source(path.Join(gitPath, conf.GetSource()))
 	}
 
 	tflog.Trace(ctx, "Compiling GoLang source code")

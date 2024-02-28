@@ -1,3 +1,7 @@
+## 0.3.0
+FEAT:
+- Optional git source support 
+
 ## 0.2.5
 CHORE:
 - Base64 hashes are now computed based on the raw hash rather then on the hexadecimal encoded 

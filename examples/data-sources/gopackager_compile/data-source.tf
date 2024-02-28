@@ -1,6 +1,6 @@
 data "gopackager_compile" "example" {
   # Required
-  ## Path to the main GoLang source or the root path of this file.
+  ## Path to the main GoLang source or the root path of this file (if git is used, path to cloned files is prepanded).
   source = "main.go"
   ## Output destination file.
   destination = "service"
