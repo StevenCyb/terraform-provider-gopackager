@@ -28,8 +28,6 @@ website/node_modules
 
 .ignore
 
-# Ignore test files
-test/compiled_example
-test/.terraform.lock.hcl
-test/*.zip
-test/main.tf
+# Ignore local test files
+test/*
+!test/main.tf

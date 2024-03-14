@@ -18,7 +18,7 @@ data "gopackager_compile" "example" {
   ## Path to the main GoLang source or the root path of this file.
   source = "main.go"
   ## Output destination file.
-  destination = "service"
+  destination = "service/bootstrap"
   ## GOOS for compilation.
   goos = "linux"
   ## GOARCH for compilation.
@@ -63,8 +63,8 @@ output "example" {
 # Example on how to use it with AWS lambda.
 resource "aws_lambda_function" "example" {
   function_name    = "example"
-  runtime          = "go1.x"
-  handler          = "service"
+  runtime          = "provided.al2023"
+  handler          = "bootstrap"
   role             = aws_iam_role.lambda_role.arn
   timeout          = 15
   filename         = data.gopackager_compile.example.output_path

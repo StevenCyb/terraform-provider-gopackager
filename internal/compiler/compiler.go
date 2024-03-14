@@ -38,6 +38,16 @@ func (c *Compiler) Compile(conf Config) (binaryLocation string, err error) {
 		return "", fmt.Errorf("unable to get absolute path of destination: %w", err)
 	}
 
+	if strings.Contains(conf.destination, "/") {
+		destinationDirectory := filepath.Dir(conf.destination)
+
+		if info, err := os.Stat(destinationDirectory); os.IsNotExist(err) || !info.IsDir() {
+			if err := os.MkdirAll(filepath.Dir(destinationDirectory), 0755); err != nil {
+				return "", fmt.Errorf("unable to create destination directory: %w", err)
+			}
+		}
+	}
+
 	args := []string{"build", "-mod=mod", "-o", conf.destination}
 	if strings.HasSuffix(conf.source, ".go") {
 		args = append(args, filepath.Base(conf.source))

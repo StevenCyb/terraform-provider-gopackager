@@ -1,3 +1,10 @@
+## 0.2.6
+CHORE:
+- Update documentation for the new `provided.al2023` variant of lambda [see here](https://aws.amazon.com/blogs/compute/migrating-aws-lambda-functions-from-the-go1-x-runtime-to-the-custom-runtime-on-amazon-linux-2/).
+
+FIXES:
+- If destination is a directory that does not exists, it will be created. E.g. `/tmp/not_existing/binary` will create `/tmp/not_existing` directory.
+
 ## 0.2.5
 CHORE:
 - Base64 hashes are now computed based on the raw hash rather then on the hexadecimal encoded 
