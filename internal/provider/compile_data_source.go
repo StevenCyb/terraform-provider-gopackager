@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/stevencyb/gopackager/internal/compiler"
+	"github.com/stevencyb/gopackager/internal/git"
 	"github.com/stevencyb/gopackager/internal/hasher"
 	"github.com/stevencyb/gopackager/internal/packager"
 )
@@ -46,6 +47,7 @@ type CompileDataSourceModel struct {
 	OutputSHA512       types.String `tfsdk:"output_sha512"`
 	OutputSHA256Base64 types.String `tfsdk:"output_sha256_base64"`
 	OutputSHA512Base64 types.String `tfsdk:"output_sha512_base64"`
+	OutputGITHash      types.String `tfsdk:"output_git_hash"`
 }
 
 // CompileDataSource is the data source for the compile resource.
@@ -127,6 +129,10 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"output_sha512_base64": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.",
+			},
+			"output_git_hash": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Last commit hash of the repository that changed `*.go`,`go.mod` or `go.sum` files.",
 			},
 		},
 	}
@@ -215,6 +221,11 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	data.OutputSHA512 = types.StringValue(combinedHashes.SHA512)
 	data.OutputSHA256Base64 = types.StringValue(combinedHashes.SHA256Base64)
 	data.OutputSHA512Base64 = types.StringValue(combinedHashes.SHA512Base64)
+	if commitHash, err := git.LastCommitHash(); err != nil {
+		data.OutputGITHash = types.StringValue("unknown")
+	} else {
+		data.OutputGITHash = types.StringValue(commitHash)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

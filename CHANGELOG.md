@@ -1,3 +1,7 @@
+## 0.2.7
+FEAT:
+- New Git commit output hash is added where "*.go", "go.mod" or "go.sum" was changed.
+
 ## 0.2.6
 CHORE:
 - Update documentation for the new `provided.al2023` variant of lambda [see here](https://aws.amazon.com/blogs/compute/migrating-aws-lambda-functions-from-the-go1-x-runtime-to-the-custom-runtime-on-amazon-linux-2/).

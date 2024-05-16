@@ -28,6 +28,7 @@ data "gopackager_compile" "example" {
   ## Zip the compiled binary and additional resources.
   zip = true
   ## Additional resources to be zipped.
+  ## {source_path = destination_path}
   zip_resources = {
     "static"  = "www/static"
     "LICENSE" = "LICENSE"
@@ -57,18 +58,23 @@ output "example" {
     # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
     # There are multiple factors that can affect the hash, that means
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
+    # Last commit hash that changes "*.go", "go.mod" or "go.sum" files.
+    # Us this hash for if more consistent hash needed.
+    # If retriving the hash from git failed, this will be `unknown`.
+    output_git_hash = data.gopackager_compile.example.output_git_hash
   }
 }
 
 # Example on how to use it with AWS lambda.
 resource "aws_lambda_function" "example" {
-  function_name    = "example"
-  runtime          = "provided.al2023"
-  handler          = "bootstrap"
-  role             = aws_iam_role.lambda_role.arn
-  timeout          = 15
-  filename         = data.gopackager_compile.example.output_path
-  source_code_hash = data.gopackager_compile.example.output_sha256_base64
+  function_name = "example"
+  runtime       = "provided.al2023"
+  handler       = "bootstrap"
+  role          = aws_iam_role.lambda_role.arn
+  timeout       = 15
+  filename      = data.gopackager_compile.example.output_path
+  # Lambda expect base64 encoded sha256 hash of the source code.
+  source_code_hash = base64sha256(data.gopackager_compile.example.output_git_hash)
   memory_size      = 128
 }
 ```
@@ -90,6 +96,7 @@ resource "aws_lambda_function" "example" {
 
 ### Read-Only
 
+- `output_git_hash` (String) Last commit hash of the repository that changed `*.go`,`go.mod` or `go.sum` files.
 - `output_md5` (String) MD5 hash of the compiled binary or compressed ZIP file.
 - `output_path` (String) Output path for the compiled binary or compressed ZIP file.
 - `output_sha1` (String) SHA1 hash of the compiled binary or compressed ZIP file.
