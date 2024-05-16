@@ -130,6 +130,10 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				Computed:            true,
 				MarkdownDescription: "Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.",
 			},
+			"output_git_hash": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Last commit hash of the repository that changed `*.go`,`go.mod` or `go.sum` files.",
+			},
 		},
 	}
 }

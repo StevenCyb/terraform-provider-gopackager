@@ -55,6 +55,7 @@ func TestAccCompileDataSource(t *testing.T) {
 		OutputSHA512:       types.StringValue("sha512hash"),
 		OutputSHA256Base64: types.StringValue("sha256base64hash"),
 		OutputSHA512Base64: types.StringValue("sha512base64hash"),
+		OutputGITHash:      types.StringValue("outputGITHash"),
 	}
 	firstUpdate := CompileDataSourceModel{
 		Source:             types.StringValue("provider.go"),
@@ -68,6 +69,7 @@ func TestAccCompileDataSource(t *testing.T) {
 		OutputSHA512:       types.StringValue("sha512hash"),
 		OutputSHA256Base64: types.StringValue("sha256base64hash"),
 		OutputSHA512Base64: types.StringValue("sha512base64hash"),
+		OutputGITHash:      types.StringValue("outputGITHash"),
 	}
 	secondUpdate := CompileDataSourceModel{
 		Source:             types.StringValue("provider.go"),
@@ -81,6 +83,7 @@ func TestAccCompileDataSource(t *testing.T) {
 		OutputSHA512:       types.StringValue("sha512hash"),
 		OutputSHA256Base64: types.StringValue("sha256base64hash"),
 		OutputSHA512Base64: types.StringValue("sha512base64hash"),
+		OutputGITHash:      types.StringValue("outputGITHash"),
 	}
 	thirdUpdate := CompileDataSourceModel{
 		Source:             types.StringValue("provider.go"),
@@ -94,6 +97,7 @@ func TestAccCompileDataSource(t *testing.T) {
 		OutputSHA512:       types.StringValue("sha512hash"),
 		OutputSHA256Base64: types.StringValue("sha256base64hash"),
 		OutputSHA512Base64: types.StringValue("sha512base64hash"),
+		OutputGITHash:      types.StringValue("outputGITHash"),
 		ZIP:                types.BoolValue(true),
 		ZIPResources:       additionalZIPResourcesGen,
 	}

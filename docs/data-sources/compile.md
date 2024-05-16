@@ -96,6 +96,7 @@ resource "aws_lambda_function" "example" {
 
 ### Read-Only
 
+- `output_git_hash` (String) Last commit hash of the repository that changed `*.go`,`go.mod` or `go.sum` files.
 - `output_md5` (String) MD5 hash of the compiled binary or compressed ZIP file.
 - `output_path` (String) Output path for the compiled binary or compressed ZIP file.
 - `output_sha1` (String) SHA1 hash of the compiled binary or compressed ZIP file.
