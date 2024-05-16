@@ -1,6 +1,6 @@
 ## 0.2.8
 FIX:
-- doc hat a broken example
+- doc had a broken example
 
 ## 0.2.7
 FEAT:
