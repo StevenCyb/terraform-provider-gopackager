@@ -1,3 +1,7 @@
+## 0.3.0
+FIX:
+- versioning
+
 ## 0.2.8
 FIX:
 - doc had a broken example
