@@ -43,9 +43,9 @@ output "example" {
     # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
     # There are multiple factors that can affect the hash, that means
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
-    # Last commit hash of the GoLang source code.
-    # If returns the last commit of current branch or `unknown` on error.
+    # Last commit hash that changes "*.go", "go.mod" or "go.sum" files.
     # Us this hash for if more consistent hash needed.
+    # If retriving the hash from git failed, this will be `unknown`.
     output_git_hash = data.gopackager_compile.example.output_git_hash
   }
 }
