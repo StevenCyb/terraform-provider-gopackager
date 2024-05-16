@@ -1,3 +1,7 @@
+## 0.2.8
+FIX:
+- doc hat a broken example
+
 ## 0.2.7
 FEAT:
 - New Git commit output hash is added where "*.go", "go.mod" or "go.sum" was changed.
