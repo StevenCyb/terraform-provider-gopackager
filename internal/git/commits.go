@@ -8,7 +8,7 @@ import (
 func LastCommitHash() (string, error) {
 	var commitID string
 
-	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd := exec.Command("git", "--no-pager", "log", "-1", "--pretty=format:%H", "--", "*.go", "--", "go.mod", "--", "go.sum")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
