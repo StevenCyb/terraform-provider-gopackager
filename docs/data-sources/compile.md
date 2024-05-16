@@ -67,14 +67,13 @@ output "example" {
 
 # Example on how to use it with AWS lambda.
 resource "aws_lambda_function" "example" {
-  function_name = "example"
-  runtime       = "provided.al2023"
-  handler       = "bootstrap"
-  role          = aws_iam_role.lambda_role.arn
-  timeout       = 15
-  filename      = data.gopackager_compile.example.output_path
-  # Lambda expect base64 encoded sha256 hash of the source code.
-  source_code_hash = base64sha256(data.gopackager_compile.example.output_git_hash)
+  function_name    = "example"
+  runtime          = "provided.al2023"
+  handler          = "bootstrap"
+  role             = aws_iam_role.lambda_role.arn
+  timeout          = 15
+  filename         = data.gopackager_compile.example.output_path
+  source_code_hash = data.gopackager_compile.example.output_sha256_base64
   memory_size      = 128
 }
 ```
