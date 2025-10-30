@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -24,7 +25,21 @@ func TestAccDataSourceFrameworkSatisfaction(t *testing.T) {
 }
 
 func TestAccCompileDataSource(t *testing.T) {
-	t.Parallel()
+	// Save original global instances
+	originalCompiler := globalCompiler
+	originalZIPPackager := globalZIPPackager
+	originalHasher := globalHasher
+
+	// Clean up after test
+	t.Cleanup(func() {
+		globalCompiler = originalCompiler
+		globalZIPPackager = originalZIPPackager
+		globalHasher = originalHasher
+		// Clean up any .gopackager metadata files created during the test
+		os.Remove("linux_amd64_binary.gopackager")
+		os.Remove("windows_amd64_binary.gopackager")
+		os.Remove("windows_amd64_binary.zip.gopackager")
+	})
 
 	mockCompiler := compiler.MockCompiler{}
 	mockPackager := packager.MockZIP{}
@@ -243,7 +258,17 @@ func TestAccCompileDataSource(t *testing.T) {
 }
 
 func TestAccCompileDataSourceWithGitTrigger(t *testing.T) {
-	t.Parallel()
+	// Save original global instances
+	originalCompiler := globalCompiler
+	originalZIPPackager := globalZIPPackager
+	originalHasher := globalHasher
+
+	// Clean up after test
+	t.Cleanup(func() {
+		globalCompiler = originalCompiler
+		globalZIPPackager = originalZIPPackager
+		globalHasher = originalHasher
+	})
 
 	mockCompiler := compiler.MockCompiler{}
 	mockPackager := packager.MockZIP{}
