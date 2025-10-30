@@ -1,3 +1,11 @@
+## 0.4.0
+FEAT:
+- New Git commit output hash is added where specified path was changed when `git_trigger` is enabled.
+
+CHORE:
+- Update documentation to include `git_trigger` and `git_trigger_path` options.
+- Update packages.
+
 ## 0.3.0
 FIX:
 - versioning
