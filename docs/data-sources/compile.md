@@ -33,6 +33,11 @@ data "gopackager_compile" "example" {
     "static"  = "www/static"
     "LICENSE" = "LICENSE"
   }
+
+  ## Enable git trigger mode to only rebuild when specified path has changes
+  git_trigger = true
+  ## Path to monitor for changes (defaults to current directory if not specified)
+  git_trigger_path = "./src"
 }
 
 output "example" {
@@ -60,11 +65,27 @@ output "example" {
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
     # Last commit hash that changes "*.go", "go.mod" or "go.sum" files.
     # Us this hash for if more consistent hash needed.
-    # If retriving the hash from git failed, this will be `unknown`.
+    # If retrieving the hash from git failed, this will be `unknown`.
     output_git_hash = data.gopackager_compile.example.output_git_hash
   }
 }
 
+# Git trigger example - only recompile when src directory changes
+data "gopackager_compile" "git_triggered_example" {
+  # Required
+  source      = "main.go"
+  destination = "service/bootstrap-git"
+  goos        = "linux"
+  goarch      = "amd64"
+
+  # Git trigger configuration
+  ## Enable git trigger mode to only rebuild when specified path has changes
+  git_trigger = true
+  ## Path to monitor for changes (defaults to current directory if not specified)
+  git_trigger_path = "./src"
+}
+
+# Example on how to use it with AWS lambda.
 # Example on how to use it with AWS lambda.
 resource "aws_lambda_function" "example" {
   function_name    = "example"
@@ -72,8 +93,8 @@ resource "aws_lambda_function" "example" {
   handler          = "bootstrap"
   role             = aws_iam_role.lambda_role.arn
   timeout          = 15
-  filename         = data.gopackager_compile.example.output_path
-  source_code_hash = data.gopackager_compile.example.output_sha256_base64
+  filename         = data.gopackager_compile.git_triggered_example.output_path
+  source_code_hash = data.gopackager_compile.git_triggered_example.output_git_hash
   memory_size      = 128
 }
 ```
@@ -90,6 +111,8 @@ resource "aws_lambda_function" "example" {
 
 ### Optional
 
+- `git_trigger` (Boolean) Enable git trigger mode to only rebuild when files in git_trigger_path have changed since last compilation.
+- `git_trigger_path` (String) Path to watch for changes when git_trigger is enabled. Defaults to current directory if not specified.
 - `zip` (Boolean) Zip the compiled binary and additional resources.
 - `zip_resources` (Map of String) Additional resources to include in the zip file. The binary is automatically included an copied to the root of the zip file.
 

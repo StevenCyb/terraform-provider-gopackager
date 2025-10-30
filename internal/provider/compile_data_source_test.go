@@ -14,6 +14,7 @@ import (
 	"github.com/stevencyb/gopackager/internal/hasher"
 	"github.com/stevencyb/gopackager/internal/packager"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestAccDataSourceFrameworkSatisfaction(t *testing.T) {
@@ -102,8 +103,8 @@ func TestAccCompileDataSource(t *testing.T) {
 		ZIPResources:       additionalZIPResourcesGen,
 	}
 
-	mockHasher.On("ReadFile", initialDataSource.OutputPath.ValueString()).Times(3).Return([]byte("123"), nil)
-	mockHasher.On("CombinedHash", []byte("123")).Times(3).Return(hasher.CombinedHash{
+	mockHasher.On("ReadFile", initialDataSource.OutputPath.ValueString()).Return([]byte("123"), nil)
+	mockHasher.On("CombinedHash", []byte("123")).Return(hasher.CombinedHash{
 		MD5:          initialDataSource.OutputMD5.ValueString(),
 		SHA1:         initialDataSource.OutputSHA1.ValueString(),
 		SHA256:       initialDataSource.OutputSHA256.ValueString(),
@@ -117,11 +118,10 @@ func TestAccCompileDataSource(t *testing.T) {
 			Destination(initialDataSource.Destination.ValueString()).
 			GOOS(initialDataSource.GOOS.ValueString()).
 			GOARCH(initialDataSource.GOARCH.ValueString()),
-	).Times(3).
-		Return(initialDataSource.OutputPath.ValueString(), nil)
+	).Return(initialDataSource.OutputPath.ValueString(), nil)
 
-	mockHasher.On("ReadFile", firstUpdate.OutputPath.ValueString()).Times(6).Return([]byte("333"), nil)
-	mockHasher.On("CombinedHash", []byte("333")).Times(6).Return(hasher.CombinedHash{
+	mockHasher.On("ReadFile", firstUpdate.OutputPath.ValueString()).Return([]byte("333"), nil)
+	mockHasher.On("CombinedHash", []byte("333")).Return(hasher.CombinedHash{
 		MD5:          firstUpdate.OutputMD5.ValueString(),
 		SHA1:         firstUpdate.OutputSHA1.ValueString(),
 		SHA256:       firstUpdate.OutputSHA256.ValueString(),
@@ -135,28 +135,26 @@ func TestAccCompileDataSource(t *testing.T) {
 			Destination(firstUpdate.Destination.ValueString()).
 			GOOS(firstUpdate.GOOS.ValueString()).
 			GOARCH(firstUpdate.GOARCH.ValueString()),
-	).Times(3).
-		Return(firstUpdate.OutputPath.ValueString(), nil)
+	).Return(firstUpdate.OutputPath.ValueString(), nil)
 
-	// ReadFile and CombinedHash are reused
+	// ReadFile and CombinedHash are reused for secondUpdate
 	mockCompiler.On("Compile",
 		*compiler.NewConfig().
 			Source(secondUpdate.Source.ValueString()).
 			Destination(secondUpdate.Destination.ValueString()).
 			GOOS(secondUpdate.GOOS.ValueString()).
 			GOARCH(secondUpdate.GOARCH.ValueString()),
-	).Times(3).
-		Return(secondUpdate.OutputPath.ValueString(), nil)
+	).Return(secondUpdate.OutputPath.ValueString(), nil)
 
-	mockPackager.On("Zip", thirdUpdate.OutputPath.ValueString()+".zip", additionalZIPResources).Times(3).Return(nil)
-	mockHasher.On("ReadFile", thirdUpdate.OutputPath.ValueString()+".zip").Times(3).Return([]byte("666"), nil)
-	mockHasher.On("CombinedHash", []byte("666")).Times(3).Return(hasher.CombinedHash{
-		MD5:          firstUpdate.OutputMD5.ValueString(),
-		SHA1:         firstUpdate.OutputSHA1.ValueString(),
-		SHA256:       firstUpdate.OutputSHA256.ValueString(),
-		SHA512:       firstUpdate.OutputSHA512.ValueString(),
-		SHA256Base64: firstUpdate.OutputSHA256Base64.ValueString(),
-		SHA512Base64: firstUpdate.OutputSHA512Base64.ValueString(),
+	mockPackager.On("Zip", thirdUpdate.OutputPath.ValueString()+".zip", additionalZIPResources).Return(nil)
+	mockHasher.On("ReadFile", thirdUpdate.OutputPath.ValueString()+".zip").Return([]byte("666"), nil)
+	mockHasher.On("CombinedHash", []byte("666")).Return(hasher.CombinedHash{
+		MD5:          thirdUpdate.OutputMD5.ValueString(),
+		SHA1:         thirdUpdate.OutputSHA1.ValueString(),
+		SHA256:       thirdUpdate.OutputSHA256.ValueString(),
+		SHA512:       thirdUpdate.OutputSHA512.ValueString(),
+		SHA256Base64: thirdUpdate.OutputSHA256Base64.ValueString(),
+		SHA512Base64: thirdUpdate.OutputSHA512Base64.ValueString(),
 	}, nil)
 	mockCompiler.On("Compile",
 		*compiler.NewConfig().
@@ -164,8 +162,7 @@ func TestAccCompileDataSource(t *testing.T) {
 			Destination(thirdUpdate.Destination.ValueString()).
 			GOOS(thirdUpdate.GOOS.ValueString()).
 			GOARCH(thirdUpdate.GOARCH.ValueString()),
-	).Times(3).
-		Return(thirdUpdate.OutputPath.ValueString(), nil)
+	).Return(thirdUpdate.OutputPath.ValueString(), nil)
 
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -245,14 +242,83 @@ func TestAccCompileDataSource(t *testing.T) {
 	})
 }
 
+func TestAccCompileDataSourceWithGitTrigger(t *testing.T) {
+	t.Parallel()
+
+	mockCompiler := compiler.MockCompiler{}
+	mockPackager := packager.MockZIP{}
+	mockHasher := hasher.MockHasher{}
+	globalCompiler = &mockCompiler
+	globalZIPPackager = &mockPackager
+	globalHasher = &mockHasher
+
+	// Test data source with git trigger enabled
+	gitTriggerDataSource := CompileDataSourceModel{
+		Source:             types.StringValue("provider.go"),
+		Destination:        types.StringValue("linux_amd64_binary"),
+		GOOS:               types.StringValue("linux"),
+		GOARCH:             types.StringValue("amd64"),
+		GitTrigger:         types.BoolValue(true),
+		GitTriggerPath:     types.StringValue("./src"),
+		OutputPath:         types.StringValue("linux_amd64_binary"),
+		OutputMD5:          types.StringValue("md5hash"),
+		OutputSHA1:         types.StringValue("sha1hash"),
+		OutputSHA256:       types.StringValue("sha256hash"),
+		OutputSHA512:       types.StringValue("sha512hash"),
+		OutputSHA256Base64: types.StringValue("sha256base64hash"),
+		OutputSHA512Base64: types.StringValue("sha512base64hash"),
+		OutputGITHash:      types.StringValue("outputGITHash"),
+	}
+
+	mockHasher.On("ReadFile", gitTriggerDataSource.OutputPath.ValueString()).Return([]byte("123"), nil)
+	mockHasher.On("CombinedHash", []byte("123")).Return(hasher.CombinedHash{
+		MD5:          "md5hash",
+		SHA1:         "sha1hash",
+		SHA256:       "sha256hash",
+		SHA512:       "sha512hash",
+		SHA256Base64: "sha256base64hash",
+		SHA512Base64: "sha512base64hash",
+	})
+	mockCompiler.On("Compile", mock.AnythingOfType("compiler.Config")).Return("linux_amd64_binary", nil)
+
+	testAccProtoV6ProviderFactories := map[string]func() (tfprotov6.ProviderServer, error){
+		"gopackager": providerserver.NewProtocol6WithError(New("test")()),
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: compilerDataSourceFromModel(t, gitTriggerDataSource),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "source", "provider.go"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "git_trigger", "true"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "git_trigger_path", "./src"),
+					resource.TestCheckResourceAttr("data.gopackager_compile.test", "output_path", "linux_amd64_binary"),
+				),
+			},
+		},
+	})
+}
+
 func compilerDataSourceFromModel(t *testing.T, model CompileDataSourceModel) string {
 	t.Helper()
 
 	zip := ""
 	zipResource := ""
+	gitTrigger := ""
+	gitTriggerPath := ""
 
 	if !model.ZIP.IsNull() && !model.ZIP.IsUnknown() && model.ZIP.ValueBool() {
 		zip = `zip = true`
+	}
+
+	if !model.GitTrigger.IsNull() && !model.GitTrigger.IsUnknown() && model.GitTrigger.ValueBool() {
+		gitTrigger = `git_trigger = true`
+	}
+
+	if !model.GitTriggerPath.IsNull() && !model.GitTriggerPath.IsUnknown() {
+		gitTriggerPath = fmt.Sprintf(`git_trigger_path = %s`, model.GitTriggerPath.String())
 	}
 
 	if !model.ZIPResources.IsNull() && !model.ZIPResources.IsUnknown() {
@@ -276,6 +342,8 @@ data "gopackager_compile" "test" {
 	goarch = %s
 	%s
 	%s
+	%s
+	%s
 }
-	`, model.Source.String(), model.Destination.String(), model.GOOS.String(), model.GOARCH.String(), zip, zipResource)
+	`, model.Source.String(), model.Destination.String(), model.GOOS.String(), model.GOARCH.String(), zip, zipResource, gitTrigger, gitTriggerPath)
 }
