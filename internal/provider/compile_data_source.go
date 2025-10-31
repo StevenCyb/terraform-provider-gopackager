@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/stevencyb/gopackager/internal/compiler"
-	"github.com/stevencyb/gopackager/internal/git"
 	"github.com/stevencyb/gopackager/internal/hasher"
 	"github.com/stevencyb/gopackager/internal/packager"
 )
@@ -37,10 +36,9 @@ type CompileDataSourceModel struct {
 	GOOS        types.String `tfsdk:"goos"`
 	GOARCH      types.String `tfsdk:"goarch"`
 	// Optional
-	ZIP            types.Bool   `tfsdk:"zip"`
-	ZIPResources   types.Map    `tfsdk:"zip_resources"`
-	GitTrigger     types.Bool   `tfsdk:"git_trigger"`
-	GitTriggerPath types.String `tfsdk:"git_trigger_path"`
+	ZIP          types.Bool   `tfsdk:"zip"`
+	ZIPResources types.Map    `tfsdk:"zip_resources"`
+	BasePath     types.String `tfsdk:"base_path"`
 	// Output
 	OutputPath         types.String `tfsdk:"output_path"`
 	OutputMD5          types.String `tfsdk:"output_md5"`
@@ -49,7 +47,6 @@ type CompileDataSourceModel struct {
 	OutputSHA512       types.String `tfsdk:"output_sha512"`
 	OutputSHA256Base64 types.String `tfsdk:"output_sha256_base64"`
 	OutputSHA512Base64 types.String `tfsdk:"output_sha512_base64"`
-	OutputGITHash      types.String `tfsdk:"output_git_hash"`
 }
 
 // CompileDataSource is the data source for the compile resource.
@@ -103,12 +100,8 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				Optional:            true,
 				ElementType:         types.StringType,
 			},
-			"git_trigger": schema.BoolAttribute{
-				MarkdownDescription: "Enable git trigger mode to only rebuild when any files in git_trigger_path have changed since last compilation.",
-				Optional:            true,
-			},
-			"git_trigger_path": schema.StringAttribute{
-				MarkdownDescription: "Path to watch for changes when git_trigger is enabled. Monitors ALL file types (Go files, static resources, configuration files, templates, etc.). Defaults to current directory if not specified.",
+			"base_path": schema.StringAttribute{
+				MarkdownDescription: "Overwrite the base path to watch that is by default the source directory.",
 				Optional:            true,
 			},
 			// Output
@@ -139,10 +132,6 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"output_sha512_base64": schema.StringAttribute{
 				Computed:            true,
 				MarkdownDescription: "Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.",
-			},
-			"output_git_hash": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Stable git hash for build reproducibility. Returns the last commit hash that modified any files in the repository. When git_trigger is enabled, uses commit hash from the monitored path. When the working directory is dirty (has uncommitted changes), returns a deterministic fallback hash based on HEAD commit + content hash of modified files.",
 			},
 		},
 	}
@@ -176,63 +165,6 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			"Invalid configuration.",
 			"Expected configuration to be valid, but got '"+err.Error()+"'.",
 		)
-		return
-	}
-
-	// Check git trigger conditions if enabled
-	if !data.GitTrigger.IsNull() && !data.GitTrigger.IsUnknown() && data.GitTrigger.ValueBool() {
-		tflog.Trace(ctx, "Git trigger enabled, checking for changes")
-
-		// Determine the path to monitor for changes
-		triggerPath := "."
-		if !data.GitTriggerPath.IsNull() && !data.GitTriggerPath.IsUnknown() {
-			triggerPath = data.GitTriggerPath.ValueString()
-		}
-
-		// Determine expected output path for checking previous compilation
-		expectedOutputPath := data.Destination.ValueString()
-		if !data.ZIP.IsNull() && !data.ZIP.IsUnknown() && data.ZIP.ValueBool() {
-			expectedOutputPath += ".zip"
-		}
-
-		// Check if we have a previous compilation commit recorded
-		lastCompilationCommit, err := git.GetLastCompilationCommit(expectedOutputPath)
-		if err == nil && lastCompilationCommit != "" {
-			// Check if there have been changes in the trigger path since last compilation
-			hasChanges, gitErr := git.HasChangedSinceCommit(triggerPath, lastCompilationCommit)
-			if gitErr == nil {
-				if !hasChanges {
-					// No changes detected, check if output file still exists
-					if content, readErr := globalHasher.ReadFile(expectedOutputPath); readErr == nil {
-						tflog.Trace(ctx, "No changes detected since last compilation, using existing output")
-
-						// Calculate hashes for existing file and return
-						combinedHashes := globalHasher.CombinedHash(content)
-						data.OutputPath = types.StringValue(expectedOutputPath)
-						data.OutputMD5 = types.StringValue(combinedHashes.MD5)
-						data.OutputSHA1 = types.StringValue(combinedHashes.SHA1)
-						data.OutputSHA256 = types.StringValue(combinedHashes.SHA256)
-						data.OutputSHA512 = types.StringValue(combinedHashes.SHA512)
-						data.OutputSHA256Base64 = types.StringValue(combinedHashes.SHA256Base64)
-						data.OutputSHA512Base64 = types.StringValue(combinedHashes.SHA512Base64)
-						data.OutputGITHash = types.StringValue(lastCompilationCommit)
-
-						resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-						return
-					} else {
-						tflog.Trace(ctx, "Output file missing despite no git changes, will recompile")
-					}
-				} else {
-					tflog.Trace(ctx, "Changes detected in trigger path since last compilation, will recompile")
-				}
-			} else {
-				tflog.Warn(ctx, "Failed to check git changes, proceeding with compilation", map[string]interface{}{
-					"error": gitErr.Error(),
-				})
-			}
-		} else {
-			tflog.Trace(ctx, "No previous compilation commit found, will compile")
-		}
 	}
 
 	tflog.Trace(ctx, "Compiling GoLang source code")
@@ -268,18 +200,19 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		}
 	}
 
-	tflog.Trace(ctx, "Compute hashes for created file")
-	content, err := globalHasher.ReadFile(outputPath)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to read compiled binary or ZIP file.",
-			"Reading compiled binary or ZIP file failed with: '"+err.Error()+"'.",
-		)
-
-		return
+	tflog.Trace(ctx, "Compute hashes")
+	baseTriggerPath := filepath.Dir(data.Source.ValueString())
+	if !data.BasePath.IsNull() && !data.BasePath.IsUnknown() {
+		baseTriggerPath = data.BasePath.ValueString()
 	}
 
-	combinedHashes := globalHasher.CombinedHash(content)
+	combinedHashes, err := globalHasher.HashDir(baseTriggerPath)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to compute hashes.",
+			"Hashing failed with: '"+err.Error()+"'.",
+		)
+	}
 
 	data.OutputPath = types.StringValue(outputPath)
 	data.OutputMD5 = types.StringValue(combinedHashes.MD5)
@@ -288,55 +221,6 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	data.OutputSHA512 = types.StringValue(combinedHashes.SHA512)
 	data.OutputSHA256Base64 = types.StringValue(combinedHashes.SHA256Base64)
 	data.OutputSHA512Base64 = types.StringValue(combinedHashes.SHA512Base64)
-	// Determine which git hash to use and handle git trigger post-compilation
-	var commitHash string
-	var gitErr error
-
-	if !data.GitTrigger.IsNull() && !data.GitTrigger.IsUnknown() && data.GitTrigger.ValueBool() {
-		// Determine the path to monitor for changes
-		triggerPath := "."
-		if !data.GitTriggerPath.IsNull() && !data.GitTriggerPath.IsUnknown() {
-			triggerPath = data.GitTriggerPath.ValueString()
-		}
-
-		// Get the last compilation commit to determine what triggered this build
-		lastCompilationCommit, err := git.GetLastCompilationCommit(outputPath)
-		if err == nil {
-			// Get the commit that actually triggered this compilation
-			commitHash, gitErr = git.GetTriggeringCommitHash(triggerPath, lastCompilationCommit)
-			tflog.Trace(ctx, fmt.Sprintf("Triggering commit for path %s: %s (since %s)", triggerPath, commitHash, lastCompilationCommit))
-		} else {
-			// Fallback to stable commit hash for the path (handles dirty state)
-			commitHash, gitErr = git.GetStableCommitHashWithFallbackForPath(triggerPath)
-			tflog.Trace(ctx, fmt.Sprintf("No previous compilation, using stable commit hash for path %s: %s", triggerPath, commitHash))
-		}
-
-		if gitErr == nil {
-			// Get the current HEAD commit hash for tracking future changes
-			// Use stable version that handles dirty state
-			currentHeadCommit, headErr := git.GetStableCommitHashWithFallback()
-			if headErr == nil {
-				// Save the current HEAD commit as the last compilation commit for future comparisons
-				saveErr := git.SaveLastCompilationCommit(outputPath, currentHeadCommit)
-				if saveErr != nil {
-					tflog.Warn(ctx, "Failed to save compilation commit for git trigger", map[string]interface{}{
-						"error": saveErr.Error(),
-					})
-				} else {
-					tflog.Trace(ctx, fmt.Sprintf("Saved stable commit hash: %s for output: %s", currentHeadCommit, outputPath))
-				}
-			}
-		}
-	} else {
-		// Use the stable git hash calculation with dirty state fallback for non-trigger mode
-		commitHash, gitErr = git.GetStableCommitHashWithFallback()
-	}
-
-	if gitErr != nil {
-		data.OutputGITHash = types.StringValue("unknown")
-	} else {
-		data.OutputGITHash = types.StringValue(commitHash)
-	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

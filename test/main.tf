@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     gopackager = {
-      version = "0.4.1"
+      version = "1.0.0"
       source  = "github.com/stevencyb/gopackager"
     }
   }
@@ -13,16 +13,6 @@ data "gopackager_compile" "example_local" {
   destination = "build/a/bootstrap"
   goarch      = "amd64"
   goos        = "linux"
-}
-
-data "gopackager_compile" "example_local_git" {
-  source      = "../main.go"
-  destination = "build/a/bootstrap"
-  goarch      = "amd64"
-  goos        = "linux"
-
-  git_trigger      = true
-  git_trigger_path = "../internal"
 }
 
 data "gopackager_compile" "example_local_zip" {
@@ -47,13 +37,6 @@ output "example_local" {
     output_sha512        = data.gopackager_compile.example_local.output_sha512
     output_sha256_base64 = data.gopackager_compile.example_local.output_sha256_base64
     output_sha512_base64 = data.gopackager_compile.example_local.output_sha512_base64
-  }
-}
-
-output "example_local_git" {
-  value = {
-    output_path     = data.gopackager_compile.example_local_git.output_path
-    output_git_hash = data.gopackager_compile.example_local_git.output_git_hash
   }
 }
 

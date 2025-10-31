@@ -1,6 +1,7 @@
-## 0.4.1
-FIX:
-- Handle dirty state correctly when using git trigger
+## 1.0.0
+REFACTOR:
+- Replace git based trigger to file hash based trigger to reduce complexity of edge cases
+- Output hash now is based on the source files instead of the resulting file
 
 ## 0.4.0
 FEAT:

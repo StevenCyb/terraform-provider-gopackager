@@ -16,7 +16,7 @@ Compiles GoLang source code into a binary executable and optionally creates a ZI
 data "gopackager_compile" "example" {
   # Required
   ## Path to the main GoLang source or the root path of this file.
-  source = "main.go"
+  source = "src/main.go"
   ## Output destination file.
   destination = "service/bootstrap"
   ## GOOS for compilation.
@@ -33,12 +33,8 @@ data "gopackager_compile" "example" {
     "static"  = "www/static"
     "LICENSE" = "LICENSE"
   }
-
-  ## Enable git trigger mode to only rebuild when any files in specified path have changes
-  git_trigger = true
-  ## Path to monitor for changes - monitors ALL file types (Go, static resources, configs, etc.)
-  ## Defaults to current directory if not specified
-  git_trigger_path = "./src"
+  ## Base path to use for hash calculation.
+  base_path = "./src"
 }
 
 output "example" {
@@ -64,32 +60,9 @@ output "example" {
     # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
     # There are multiple factors that can affect the hash, that means
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
-    # Stable git hash for build reproducibility.
-    # Returns the last commit hash that modified any files in the repository.
-    # When git_trigger is enabled, uses commit hash from the monitored path.
-    # Uses deterministic fallback when working directory is dirty.
-    # If retrieving the hash from git failed, this will be `unknown`.
-    output_git_hash = data.gopackager_compile.example.output_git_hash
   }
 }
 
-# Git trigger example - only recompile when src directory changes
-data "gopackager_compile" "git_triggered_example" {
-  # Required
-  source      = "main.go"
-  destination = "service/bootstrap-git"
-  goos        = "linux"
-  goarch      = "amd64"
-
-  # Git trigger configuration
-  ## Enable git trigger mode to only rebuild when any files in specified path have changes
-  git_trigger = true
-  ## Path to monitor for changes - monitors ALL file types (Go, static resources, configs, etc.)
-  ## Defaults to current directory if not specified
-  git_trigger_path = "./src"
-}
-
-# Example on how to use it with AWS lambda.
 # Example on how to use it with AWS lambda.
 resource "aws_lambda_function" "example" {
   function_name    = "example"
@@ -97,8 +70,8 @@ resource "aws_lambda_function" "example" {
   handler          = "bootstrap"
   role             = aws_iam_role.lambda_role.arn
   timeout          = 15
-  filename         = data.gopackager_compile.git_triggered_example.output_path
-  source_code_hash = data.gopackager_compile.git_triggered_example.output_git_hash
+  filename         = data.gopackager_compile.example.output_path
+  source_code_hash = data.gopackager_compile.example.output_sha256_base64
   memory_size      = 128
 }
 ```
@@ -115,14 +88,12 @@ resource "aws_lambda_function" "example" {
 
 ### Optional
 
-- `git_trigger` (Boolean) Enable git trigger mode to only rebuild when any files in git_trigger_path have changed since last compilation.
-- `git_trigger_path` (String) Path to watch for changes when git_trigger is enabled. Monitors ALL file types (Go files, static resources, configuration files, templates, etc.). Defaults to current directory if not specified.
+- `base_path` (String) Overwrite the base path to watch that is by default the source directory.
 - `zip` (Boolean) Zip the compiled binary and additional resources.
 - `zip_resources` (Map of String) Additional resources to include in the zip file. The binary is automatically included an copied to the root of the zip file.
 
 ### Read-Only
 
-- `output_git_hash` (String) Stable git hash for build reproducibility. Returns the last commit hash that modified any files in the repository. When git_trigger is enabled, uses commit hash from the monitored path. When the working directory is dirty (has uncommitted changes), returns a deterministic fallback hash based on HEAD commit + content hash of modified files.
 - `output_md5` (String) MD5 hash of the compiled binary or compressed ZIP file.
 - `output_path` (String) Output path for the compiled binary or compressed ZIP file.
 - `output_sha1` (String) SHA1 hash of the compiled binary or compressed ZIP file.

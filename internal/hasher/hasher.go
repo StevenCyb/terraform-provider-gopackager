@@ -1,13 +1,17 @@
 package hasher
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
+	"io"
 	"os"
+	"path/filepath"
+	"sort"
 )
 
 // HasherI is the interface for Hasher.
@@ -20,6 +24,7 @@ type HasherI interface {
 	SHA256Base64(binaryContent []byte) string
 	SHA512Base64(binaryContent []byte) string
 	CombinedHash(binaryContent []byte) CombinedHash
+	HashDir(root string) (*CombinedHash, error)
 }
 
 // CombinedHash is a struct for the combined hash.
@@ -119,4 +124,59 @@ func (h *Hasher) CombinedHash(binaryContent []byte) CombinedHash {
 		SHA256Base64: h.SHA256Base64(binaryContent),
 		SHA512Base64: h.SHA512Base64(binaryContent),
 	}
+}
+
+// HashDir hashes the contents of a directory recursively.
+func (h *Hasher) HashDir(root string) (*CombinedHash, error) {
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, rel)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(paths)
+
+	var hashBuffer bytes.Buffer
+	for _, path := range paths {
+		hasher := sha512.New()
+		fullPath := filepath.Join(root, path)
+		info, err := os.Lstat(fullPath)
+		if err != nil {
+			return nil, err
+		}
+
+		hasher.Write([]byte(path))
+
+		if info.Mode().IsRegular() {
+			f, err := os.Open(fullPath)
+			if err != nil {
+				return nil, err
+			}
+			defer f.Close()
+			if _, err := io.Copy(hasher, f); err != nil {
+				return nil, err
+			}
+		} else if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(fullPath)
+			if err != nil {
+				return nil, err
+			}
+			hasher.Write([]byte("->" + target))
+		}
+
+		hashBuffer.Write(hasher.Sum(nil))
+	}
+
+	combinedHash := h.CombinedHash(hashBuffer.Bytes())
+	return &combinedHash, nil
 }

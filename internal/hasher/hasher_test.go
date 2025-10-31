@@ -3,6 +3,7 @@ package hasher
 import (
 	"archive/zip"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,5 +87,138 @@ func TestAccHasher(t *testing.T) {
 			SHA256Base64: "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg=",
 			SHA512Base64: "7iaw3Ur350mqGo7jwQrpkj9hiYB3Lkc/iBml1JQODbJ6wYX4oOHV+E+IvIh/1nsUNzLDBMxfqa2Ob1f1ACio/w==",
 		}, combined)
+	})
+
+	t.Run("HashDir", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Success", func(t *testing.T) {
+			t.Parallel()
+
+			// Create a temporary directory for testing
+			tempDir := t.TempDir()
+
+			// Create test files and directories
+			testFiles := map[string]string{
+				"file1.txt":        "content of file 1",
+				"file2.txt":        "content of file 2",
+				"subdir/file3.txt": "content of file 3",
+				"subdir/file4.txt": "content of file 4",
+			}
+
+			for relPath, content := range testFiles {
+				fullPath := filepath.Join(tempDir, relPath)
+				err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+				assert.NoError(t, err)
+				err = os.WriteFile(fullPath, []byte(content), 0644)
+				assert.NoError(t, err)
+			}
+
+			// Test HashDir
+			result, err := hasher.HashDir(tempDir)
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+
+			// Verify all hash fields are populated and non-empty
+			assert.NotEmpty(t, result.MD5)
+			assert.NotEmpty(t, result.SHA1)
+			assert.NotEmpty(t, result.SHA256)
+			assert.NotEmpty(t, result.SHA512)
+			assert.NotEmpty(t, result.SHA256Base64)
+			assert.NotEmpty(t, result.SHA512Base64)
+
+			// Test deterministic behavior - hashing the same directory twice should give same result
+			result2, err := hasher.HashDir(tempDir)
+			assert.NoError(t, err)
+			assert.Equal(t, result, result2)
+		})
+
+		t.Run("Directory_Order_Independence", func(t *testing.T) {
+			t.Parallel()
+
+			// Create two temporary directories
+			tempDir1 := t.TempDir()
+			tempDir2 := t.TempDir()
+
+			// Create the same files in different order
+			testFiles := []struct {
+				path    string
+				content string
+			}{
+				{"file1.txt", "content 1"},
+				{"file2.txt", "content 2"},
+				{"subdir/file3.txt", "content 3"},
+			}
+
+			// Create files in tempDir1 in order
+			for _, file := range testFiles {
+				fullPath := filepath.Join(tempDir1, file.path)
+				err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+				assert.NoError(t, err)
+				err = os.WriteFile(fullPath, []byte(file.content), 0644)
+				assert.NoError(t, err)
+			}
+
+			// Create files in tempDir2 in reverse order
+			for i := len(testFiles) - 1; i >= 0; i-- {
+				file := testFiles[i]
+				fullPath := filepath.Join(tempDir2, file.path)
+				err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+				assert.NoError(t, err)
+				err = os.WriteFile(fullPath, []byte(file.content), 0644)
+				assert.NoError(t, err)
+			}
+
+			// Both directories should produce the same hash
+			hash1, err := hasher.HashDir(tempDir1)
+			assert.NoError(t, err)
+
+			hash2, err := hasher.HashDir(tempDir2)
+			assert.NoError(t, err)
+
+			assert.Equal(t, hash1, hash2)
+		})
+
+		t.Run("Empty_Directory", func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			result, err := hasher.HashDir(tempDir)
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+
+			// Even empty directory should have valid hashes
+			assert.NotEmpty(t, result.MD5)
+			assert.NotEmpty(t, result.SHA256)
+		})
+
+		t.Run("Nonexistent_Directory", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := hasher.HashDir("/nonexistent/directory")
+			assert.Error(t, err)
+		})
+
+		t.Run("With_Symlinks", func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+
+			// Create a regular file
+			regularFile := filepath.Join(tempDir, "regular.txt")
+			err := os.WriteFile(regularFile, []byte("regular content"), 0644)
+			assert.NoError(t, err)
+
+			// Create a symlink
+			symlinkPath := filepath.Join(tempDir, "symlink.txt")
+			err = os.Symlink("regular.txt", symlinkPath)
+			assert.NoError(t, err)
+
+			result, err := hasher.HashDir(tempDir)
+			assert.NoError(t, err)
+			assert.NotNil(t, result)
+			assert.NotEmpty(t, result.SHA256)
+		})
 	})
 }

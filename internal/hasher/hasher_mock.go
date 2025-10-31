@@ -64,3 +64,12 @@ func (m *MockHasher) CombinedHash(binaryContent []byte) CombinedHash {
 
 	return ret.Get(0).(CombinedHash) //nolint:forcetypeassert
 }
+
+func (m *MockHasher) HashDir(root string) (*CombinedHash, error) {
+	ret := m.Called(root)
+	if ret.Get(0) == nil {
+		return nil, ret.Error(1)
+	}
+
+	return ret.Get(0).(*CombinedHash), ret.Error(1) //nolint:forcetypeassert
+}

@@ -1,7 +1,7 @@
 data "gopackager_compile" "example" {
   # Required
   ## Path to the main GoLang source or the root path of this file.
-  source = "main.go"
+  source = "src/main.go"
   ## Output destination file.
   destination = "service/bootstrap"
   ## GOOS for compilation.
@@ -18,12 +18,8 @@ data "gopackager_compile" "example" {
     "static"  = "www/static"
     "LICENSE" = "LICENSE"
   }
-
-  ## Enable git trigger mode to only rebuild when any files in specified path have changes
-  git_trigger = true
-  ## Path to monitor for changes - monitors ALL file types (Go, static resources, configs, etc.)
-  ## Defaults to current directory if not specified
-  git_trigger_path = "./src"
+  ## Base path to use for hash calculation.
+  base_path = "./src"
 }
 
 output "example" {
@@ -49,32 +45,9 @@ output "example" {
     # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
     # There are multiple factors that can affect the hash, that means
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
-    # Stable git hash for build reproducibility.
-    # Returns the last commit hash that modified any files in the repository.
-    # When git_trigger is enabled, uses commit hash from the monitored path.
-    # Uses deterministic fallback when working directory is dirty.
-    # If retrieving the hash from git failed, this will be `unknown`.
-    output_git_hash = data.gopackager_compile.example.output_git_hash
   }
 }
 
-# Git trigger example - only recompile when src directory changes
-data "gopackager_compile" "git_triggered_example" {
-  # Required
-  source      = "main.go"
-  destination = "service/bootstrap-git"
-  goos        = "linux"
-  goarch      = "amd64"
-
-  # Git trigger configuration
-  ## Enable git trigger mode to only rebuild when any files in specified path have changes
-  git_trigger = true
-  ## Path to monitor for changes - monitors ALL file types (Go, static resources, configs, etc.)
-  ## Defaults to current directory if not specified
-  git_trigger_path = "./src"
-}
-
-# Example on how to use it with AWS lambda.
 # Example on how to use it with AWS lambda.
 resource "aws_lambda_function" "example" {
   function_name    = "example"
@@ -82,7 +55,7 @@ resource "aws_lambda_function" "example" {
   handler          = "bootstrap"
   role             = aws_iam_role.lambda_role.arn
   timeout          = 15
-  filename         = data.gopackager_compile.git_triggered_example.output_path
-  source_code_hash = data.gopackager_compile.git_triggered_example.output_git_hash
+  filename         = data.gopackager_compile.example.output_path
+  source_code_hash = data.gopackager_compile.example.output_sha256_base64
   memory_size      = 128
 }
