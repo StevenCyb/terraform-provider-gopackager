@@ -1,15 +1,22 @@
 package git
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
+// LastCommitHash returns the last commit hash that modified any files in the repository.
+// This provides consistent behavior with git_trigger mode and includes all file types
+// (Go files, static resources, configuration files, templates, etc.).
 func LastCommitHash() (string, error) {
 	var commitID string
 
-	cmd := exec.Command("git", "--no-pager", "log", "-1", "--pretty=format:%H", "--", "*.go", "--", "go.mod", "--", "go.sum")
+	cmd := exec.Command("git", "--no-pager", "log", "-1", "--pretty=format:%H")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -114,4 +121,180 @@ func GetLastCompilationCommit(targetPath string) (string, error) {
 func SaveLastCompilationCommit(targetPath, commitHash string) error {
 	metadataFile := targetPath + ".gopackager"
 	return os.WriteFile(metadataFile, []byte(commitHash), 0644)
+}
+
+// IsDirty checks if the working directory has uncommitted changes for any files.
+// This provides consistent behavior with git_trigger mode and includes all file types
+// (Go files, static resources, configuration files, templates, etc.).
+func IsDirty() (bool, error) {
+	// Check if there are any staged or unstaged changes for any files
+	cmd := exec.Command("git", "status", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+
+	// If output is not empty, there are uncommitted changes
+	return strings.TrimSpace(string(output)) != "", nil
+}
+
+// IsDirtyForPath checks if the working directory has uncommitted changes for ANY files in the specified path.
+// This includes all file types: Go files, static resources, configuration files, templates, etc.
+func IsDirtyForPath(path string) (bool, error) {
+	// Check if there are any staged or unstaged changes in the specified path (all files)
+	cmd := exec.Command("git", "status", "--porcelain", "--", path)
+	output, err := cmd.Output()
+	if err != nil {
+		// If git command fails, assume path is outside repository or doesn't exist
+		//nolint:nilerr
+		return false, nil
+	}
+
+	// If output is not empty, there are uncommitted changes
+	return strings.TrimSpace(string(output)) != "", nil
+}
+
+// GetModifiedFilesContent returns a deterministic hash of the content of all modified files in the path.
+func GetModifiedFilesContent(path string) (string, error) {
+	// Get list of modified files
+	cmd := exec.Command("git", "status", "--porcelain", "--", path)
+	output, err := cmd.Output()
+	if err != nil {
+		// If git command fails, assume path is outside repository or doesn't exist
+		//nolint:nilerr
+		return "", nil
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 1 && lines[0] == "" {
+		// No modified files, return empty hash
+		return "", nil
+	}
+
+	// Collect file contents in a deterministic order
+	var fileContents []string
+	var filePaths []string
+
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		// Parse git status output (format: "XY filename")
+		if len(line) < 4 {
+			continue
+		}
+		filePath := strings.TrimSpace(line[3:])
+		filePaths = append(filePaths, filePath)
+	}
+
+	// Sort files for deterministic order
+	sort.Strings(filePaths)
+
+	// Read file contents
+	for _, filePath := range filePaths {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			// File might be deleted, skip it
+			continue
+		}
+		fileContents = append(fileContents, fmt.Sprintf("%s:%s", filePath, string(content)))
+	}
+
+	// Create a hash of all file contents combined
+	if len(fileContents) == 0 {
+		return "", nil
+	}
+
+	hasher := sha256.New()
+	for _, content := range fileContents {
+		hasher.Write([]byte(content))
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// GetStableCommitHashWithFallback returns a stable commit hash, with fallback for dirty working directory.
+// If the working directory is clean, it returns the actual commit hash.
+// If dirty, it returns a deterministic hash based on HEAD commit + modified files content.
+func GetStableCommitHashWithFallback() (string, error) {
+	// First check if working directory is dirty
+	isDirty, err := IsDirty()
+	if err != nil {
+		return "", err
+	}
+
+	// Get the current HEAD commit
+	headCommit, err := LastCommitHash()
+	if err != nil {
+		return "", err
+	}
+
+	if !isDirty {
+		// Clean working directory, return actual commit hash
+		return headCommit, nil
+	}
+
+	// Dirty working directory, create fallback hash
+	modifiedContent, err := GetModifiedFilesContent(".")
+	if err != nil {
+		return "", err
+	}
+
+	if modifiedContent == "" {
+		// No modified files content but still dirty (maybe staged changes), use HEAD + "dirty" indicator
+		hasher := sha256.New()
+		hasher.Write([]byte(headCommit + ":dirty"))
+		fallbackHash := hex.EncodeToString(hasher.Sum(nil))
+		return fallbackHash[:40], nil
+	}
+
+	// Create deterministic fallback hash: SHA256(HEAD_COMMIT + MODIFIED_CONTENT)
+	hasher := sha256.New()
+	hasher.Write([]byte(headCommit + ":" + modifiedContent))
+	fallbackHash := hex.EncodeToString(hasher.Sum(nil))
+
+	return fallbackHash[:40], nil // Return first 40 characters to match git commit hash length
+}
+
+// GetStableCommitHashWithFallbackForPath returns a stable commit hash for a specific path, with fallback for dirty working directory.
+// If the working directory is clean for the path, it returns the actual commit hash for that path.
+// If dirty, it returns a deterministic hash based on the path's HEAD commit + modified files content.
+func GetStableCommitHashWithFallbackForPath(path string) (string, error) {
+	// First check if working directory is dirty for this path
+	isDirty, err := IsDirtyForPath(path)
+	if err != nil {
+		return "", err
+	}
+
+	// Get the current HEAD commit for this path
+	headCommit, err := LastCommitHashForPath(path)
+	if err != nil {
+		return "", err
+	}
+
+	if !isDirty {
+		// Clean working directory for this path, return actual commit hash
+		return headCommit, nil
+	}
+
+	// Dirty working directory, create fallback hash
+	modifiedContent, err := GetModifiedFilesContent(path)
+	if err != nil {
+		return "", err
+	}
+
+	if modifiedContent == "" {
+		// No modified files content but still dirty (maybe staged changes), use HEAD + "dirty" indicator
+		hasher := sha256.New()
+		hasher.Write([]byte(headCommit + ":dirty:" + path))
+		fallbackHash := hex.EncodeToString(hasher.Sum(nil))
+		return fallbackHash[:40], nil
+	}
+
+	// Create deterministic fallback hash: SHA256(HEAD_COMMIT + MODIFIED_CONTENT)
+	hasher := sha256.New()
+	hasher.Write([]byte(headCommit + ":" + modifiedContent))
+	fallbackHash := hex.EncodeToString(hasher.Sum(nil))
+
+	return fallbackHash[:40], nil // Return first 40 characters to match git commit hash length
 }

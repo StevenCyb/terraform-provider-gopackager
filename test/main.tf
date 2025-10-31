@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     gopackager = {
-      version = "0.4.0"
+      version = "0.4.1"
       source  = "github.com/stevencyb/gopackager"
     }
   }

@@ -83,3 +83,89 @@ func Test_GetTriggeringCommitHash(t *testing.T) {
 	// Should return the same commit if no changes since then
 	assert.Equal(t, currentCommit, triggeringCommit)
 }
+
+func Test_IsDirty(t *testing.T) {
+	t.Parallel()
+
+	// Test dirty state detection (monitors ALL file types for consistency)
+	isDirty, err := IsDirty()
+	assert.NoError(t, err)
+	// We can't assert the exact value since it depends on the actual git state
+	// but we can verify the function doesn't error
+	assert.IsType(t, false, isDirty)
+}
+
+func Test_IsDirtyForPath(t *testing.T) {
+	t.Parallel()
+
+	// Test dirty state detection for specific path (monitors ALL file types)
+	isDirty, err := IsDirtyForPath(".")
+	assert.NoError(t, err)
+	// We can't assert the exact value since it depends on the actual git state
+	// but we can verify the function doesn't error
+	assert.IsType(t, false, isDirty)
+
+	// Test with non-existent path
+	isDirty, err = IsDirtyForPath("/tmp/non-existent-path")
+	assert.NoError(t, err)
+	assert.False(t, isDirty) // Should be false for non-existent path
+}
+
+func Test_GetModifiedFilesContent(t *testing.T) {
+	t.Parallel()
+
+	// Test getting modified files content
+	content, err := GetModifiedFilesContent(".")
+	assert.NoError(t, err)
+	// Content can be empty if no modified files, that's fine
+	assert.IsType(t, "", content)
+
+	// Test with non-existent path
+	content, err = GetModifiedFilesContent("/tmp/non-existent-path")
+	assert.NoError(t, err)
+	assert.Equal(t, "", content) // Should be empty for non-existent path
+}
+
+func Test_GetStableCommitHashWithFallback(t *testing.T) {
+	t.Parallel()
+
+	// Test stable commit hash with fallback
+	stableHash, err := GetStableCommitHashWithFallback()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, stableHash)
+
+	// Should be either a valid git commit hash (40 chars) or a fallback hash (40 chars)
+	assert.Len(t, stableHash, 40)
+	assert.Regexp(t, `^[0-9a-f]{40}$`, stableHash)
+
+	// Test consistency - calling twice should return the same result
+	// (assuming no changes between calls in test environment)
+	stableHash2, err := GetStableCommitHashWithFallback()
+	assert.NoError(t, err)
+	assert.Equal(t, stableHash, stableHash2)
+}
+
+func Test_GetStableCommitHashWithFallbackForPath(t *testing.T) {
+	t.Parallel()
+
+	// Test stable commit hash with fallback for specific path
+	stableHash, err := GetStableCommitHashWithFallbackForPath(".")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, stableHash)
+
+	// Should be either a valid git commit hash (40 chars) or a fallback hash (40 chars)
+	assert.Len(t, stableHash, 40)
+	assert.Regexp(t, `^[0-9a-f]{40}$`, stableHash)
+
+	// Test with specific subdirectory - use relative path that exists from current directory
+	stableHash2, err := GetStableCommitHashWithFallbackForPath(".")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, stableHash2)
+	assert.Len(t, stableHash2, 40)
+	assert.Regexp(t, `^[0-9a-f]{40}$`, stableHash2)
+
+	// Test consistency for the same path
+	stableHash3, err := GetStableCommitHashWithFallbackForPath(".")
+	assert.NoError(t, err)
+	assert.Equal(t, stableHash, stableHash3)
+}

@@ -1,3 +1,7 @@
+## 0.4.1
+FIX:
+- Handle dirty state correctly when using git trigger
+
 ## 0.4.0
 FEAT:
 - New Git commit output hash is added where specified path was changed when `git_trigger` is enabled.

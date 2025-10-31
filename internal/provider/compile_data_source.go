@@ -104,11 +104,11 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 				ElementType:         types.StringType,
 			},
 			"git_trigger": schema.BoolAttribute{
-				MarkdownDescription: "Enable git trigger mode to only rebuild when files in git_trigger_path have changed since last compilation.",
+				MarkdownDescription: "Enable git trigger mode to only rebuild when any files in git_trigger_path have changed since last compilation.",
 				Optional:            true,
 			},
 			"git_trigger_path": schema.StringAttribute{
-				MarkdownDescription: "Path to watch for changes when git_trigger is enabled. Defaults to current directory if not specified.",
+				MarkdownDescription: "Path to watch for changes when git_trigger is enabled. Monitors ALL file types (Go files, static resources, configuration files, templates, etc.). Defaults to current directory if not specified.",
 				Optional:            true,
 			},
 			// Output
@@ -142,7 +142,7 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			},
 			"output_git_hash": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Last commit hash of the repository that changed `*.go`,`go.mod` or `go.sum` files.",
+				MarkdownDescription: "Stable git hash for build reproducibility. Returns the last commit hash that modified any files in the repository. When git_trigger is enabled, uses commit hash from the monitored path. When the working directory is dirty (has uncommitted changes), returns a deterministic fallback hash based on HEAD commit + content hash of modified files.",
 			},
 		},
 	}
@@ -306,14 +306,15 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			commitHash, gitErr = git.GetTriggeringCommitHash(triggerPath, lastCompilationCommit)
 			tflog.Trace(ctx, fmt.Sprintf("Triggering commit for path %s: %s (since %s)", triggerPath, commitHash, lastCompilationCommit))
 		} else {
-			// Fallback to latest commit for the path if no previous compilation
-			commitHash, gitErr = git.LastCommitHashForPath(triggerPath)
-			tflog.Trace(ctx, fmt.Sprintf("No previous compilation, using latest commit for path %s: %s", triggerPath, commitHash))
+			// Fallback to stable commit hash for the path (handles dirty state)
+			commitHash, gitErr = git.GetStableCommitHashWithFallbackForPath(triggerPath)
+			tflog.Trace(ctx, fmt.Sprintf("No previous compilation, using stable commit hash for path %s: %s", triggerPath, commitHash))
 		}
 
 		if gitErr == nil {
 			// Get the current HEAD commit hash for tracking future changes
-			currentHeadCommit, headErr := git.LastCommitHash()
+			// Use stable version that handles dirty state
+			currentHeadCommit, headErr := git.GetStableCommitHashWithFallback()
 			if headErr == nil {
 				// Save the current HEAD commit as the last compilation commit for future comparisons
 				saveErr := git.SaveLastCompilationCommit(outputPath, currentHeadCommit)
@@ -322,13 +323,13 @@ func (c *CompileDataSource) Read(ctx context.Context, req datasource.ReadRequest
 						"error": saveErr.Error(),
 					})
 				} else {
-					tflog.Trace(ctx, fmt.Sprintf("Saved HEAD commit: %s for output: %s", currentHeadCommit, outputPath))
+					tflog.Trace(ctx, fmt.Sprintf("Saved stable commit hash: %s for output: %s", currentHeadCommit, outputPath))
 				}
 			}
 		}
 	} else {
-		// Use the original git hash calculation for non-trigger mode
-		commitHash, gitErr = git.LastCommitHash()
+		// Use the stable git hash calculation with dirty state fallback for non-trigger mode
+		commitHash, gitErr = git.GetStableCommitHashWithFallback()
 	}
 
 	if gitErr != nil {
