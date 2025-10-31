@@ -111,27 +111,27 @@ func (c *CompileDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			},
 			"output_md5": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "MD5 hash of the compiled binary or compressed ZIP file.",
+				MarkdownDescription: "MD5 hash of the source files.",
 			},
 			"output_sha1": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "SHA1 hash of the compiled binary or compressed ZIP file.",
+				MarkdownDescription: "SHA1 hash of the source files.",
 			},
 			"output_sha256": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "SHA256 hash of the compiled binary or compressed ZIP file.",
+				MarkdownDescription: "SHA256 hash of the source files.",
 			},
 			"output_sha512": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "SHA512 hash of the compiled binary or compressed ZIP file.",
+				MarkdownDescription: "SHA512 hash of the source files.",
 			},
 			"output_sha256_base64": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Base64 encoded SHA256 hash of the compiled binary or compressed ZIP file.",
+				MarkdownDescription: "Base64 encoded SHA256 hash of the source files.",
 			},
 			"output_sha512_base64": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.",
+				MarkdownDescription: "Base64 encoded SHA512 hash of the source files.",
 			},
 		},
 	}

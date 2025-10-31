@@ -42,23 +42,23 @@ output "example" {
     # `output_path` provides the path and file name of the compiled binary.
     # If `zip = true`, this will refer to the zip file.
     output_path = data.gopackager_compile.example.output_path
-    # `output_md5` provides the md5 hash of the compiled binary or compressed ZIP file as hexadecimal encoded.
-    # There are multiple factors that can affect the hash, that means
+    # `output_md5` provides the md5 hash of the source files.
+    # If the `base_path` is provided, the hash is calculated based on that path instead of the source's directory.
     output_md5 = data.gopackager_compile.example.output_md5
-    # `output_sha1` provides the SHA1 hash of the compiled binary or compressed ZIP file as hexadecimal encoded.
-    # There are multiple factors that can affect the hash, that means
+    # `output_sha1` provides the SHA1 hash of the source files.
+    # If the `base_path` is provided, the hash is calculated based on that path instead of the source's directory.
     output_sha1 = data.gopackager_compile.example.output_sha1
-    # `output_sha256` provides the SHA256 hash of the compiled binary or compressed ZIP file as hexadecimal encoded.
-    # There are multiple factors that can affect the hash, that means
+    # `output_sha256` provides the SHA256 hash of the source files.
+    # If the `base_path` is provided, the hash is calculated based on that path instead of the source's directory.
     output_sha256 = data.gopackager_compile.example.output_sha256
-    # `output_sha512` provides the SHA512 hash of the compiled binary or compressed ZIP file as hexadecimal encoded.
-    # There are multiple factors that can affect the hash, that means
+    # `output_sha512` provides the SHA512 hash of the source files.
+    # If the `base_path` is provided, the hash is calculated based on that path instead of the source's directory.
     output_sha512 = data.gopackager_compile.example.output_sha512
-    # `output_sha256_base64` provides the Base64 encoded SHA256 hash of the compiled binary or compressed ZIP file.
-    # There are multiple factors that can affect the hash, that means
+    # `output_sha256_base64` provides the Base64 encoded SHA256 hash of the source files.
+    # If the `base_path` is provided, the hash is calculated based on that path instead of the source's directory.
     output_sha256_base64 = data.gopackager_compile.example.output_sha256_base64
-    # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
-    # There are multiple factors that can affect the hash, that means
+    # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the source files.
+    # If the `base_path` is provided, the hash is calculated based on that path instead of the source's directory.
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
   }
 }
@@ -94,10 +94,10 @@ resource "aws_lambda_function" "example" {
 
 ### Read-Only
 
-- `output_md5` (String) MD5 hash of the compiled binary or compressed ZIP file.
+- `output_md5` (String) MD5 hash of the source files.
 - `output_path` (String) Output path for the compiled binary or compressed ZIP file.
-- `output_sha1` (String) SHA1 hash of the compiled binary or compressed ZIP file.
-- `output_sha256` (String) SHA256 hash of the compiled binary or compressed ZIP file.
-- `output_sha256_base64` (String) Base64 encoded SHA256 hash of the compiled binary or compressed ZIP file.
-- `output_sha512` (String) SHA512 hash of the compiled binary or compressed ZIP file.
-- `output_sha512_base64` (String) Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
+- `output_sha1` (String) SHA1 hash of the source files.
+- `output_sha256` (String) SHA256 hash of the source files.
+- `output_sha256_base64` (String) Base64 encoded SHA256 hash of the source files.
+- `output_sha512` (String) SHA512 hash of the source files.
+- `output_sha512_base64` (String) Base64 encoded SHA512 hash of the source files.

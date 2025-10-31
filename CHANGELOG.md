@@ -1,3 +1,7 @@
+## 1.0.1
+FIX:
+- Documentation have now the new hash explanation
+
 ## 1.0.0
 REFACTOR:
 - Replace git based trigger to file hash based trigger to reduce complexity of edge cases

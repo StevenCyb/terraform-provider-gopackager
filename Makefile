@@ -2,7 +2,7 @@ HOSTNAME=github.com
 NAMESPACE=stevencyb
 NAME=gopackager
 BINARY=terraform-provider-${NAME}
-VERSION=1.0.0
+VERSION=1.0.1
 # // THIS NEEDS to be adjusted for your OS and ARCHITECTURE
 OS=darwin
 OS_ARCH=arm64
