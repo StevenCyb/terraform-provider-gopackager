@@ -19,9 +19,10 @@ data "gopackager_compile" "example" {
     "LICENSE" = "LICENSE"
   }
 
-  ## Enable git trigger mode to only rebuild when specified path has changes
+  ## Enable git trigger mode to only rebuild when any files in specified path have changes
   git_trigger = true
-  ## Path to monitor for changes (defaults to current directory if not specified)
+  ## Path to monitor for changes - monitors ALL file types (Go, static resources, configs, etc.)
+  ## Defaults to current directory if not specified
   git_trigger_path = "./src"
 }
 
@@ -48,8 +49,10 @@ output "example" {
     # `output_sha512_base64` provides the Base64 encoded SHA512 hash of the compiled binary or compressed ZIP file.
     # There are multiple factors that can affect the hash, that means
     output_sha512_base64 = data.gopackager_compile.example.output_sha512_base64
-    # Last commit hash that changes "*.go", "go.mod" or "go.sum" files.
-    # Us this hash for if more consistent hash needed.
+    # Stable git hash for build reproducibility.
+    # Returns the last commit hash that modified any files in the repository.
+    # When git_trigger is enabled, uses commit hash from the monitored path.
+    # Uses deterministic fallback when working directory is dirty.
     # If retrieving the hash from git failed, this will be `unknown`.
     output_git_hash = data.gopackager_compile.example.output_git_hash
   }
@@ -64,9 +67,10 @@ data "gopackager_compile" "git_triggered_example" {
   goarch      = "amd64"
 
   # Git trigger configuration
-  ## Enable git trigger mode to only rebuild when specified path has changes
+  ## Enable git trigger mode to only rebuild when any files in specified path have changes
   git_trigger = true
-  ## Path to monitor for changes (defaults to current directory if not specified)
+  ## Path to monitor for changes - monitors ALL file types (Go, static resources, configs, etc.)
+  ## Defaults to current directory if not specified
   git_trigger_path = "./src"
 }
 
